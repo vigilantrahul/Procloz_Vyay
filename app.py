@@ -96,8 +96,7 @@ def login():
             "refresh_token": refresh_token,
             "username": user_data.employee_name,
             "user_type": user_data.user_type,
-            "designation": user_data.employee_business_title,
-            "employee_id": user_data.employee_id
+            "designation": user_data.employee_business_title
         }
     }
     return jsonify(response_data)

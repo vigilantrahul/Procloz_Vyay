@@ -5,11 +5,21 @@ from datetime import timedelta
 import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session
+from flask_cors import CORS
 from constants import http_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 
 app = Flask(__name__)
+CORS(app, origins=["vyay-test.azurewebsites.net"], supports_credentials=True)
 jwt = JWTManager(app)
+
+
+# CORS Error Handling
+@app.errorhandler(403)
+def forbidden_error(error):
+    response = jsonify({'responseMessage': 'Forbidden', 'error': str(error), "responseCode": http_status_codes.HTTP_403_FORBIDDEN})
+    return response
+
 
 # ----------------------------- Session Configuration -----------------------------
 app.config['SECRET_KEY'] = 'your_flask_secret_key'

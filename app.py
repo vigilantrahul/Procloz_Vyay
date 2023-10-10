@@ -90,6 +90,7 @@ def login():
     session['refresh_token'] = refresh_token
     session['username'] = user_data.employee_name
     session['user_type'] = user_data.user_type
+    session['email_id'] = user_data.email_id
 
     # Return the tokens to the client
     response_data = {
@@ -277,6 +278,52 @@ def reset_password():
     response_data = {
         "responseCode": http_status_codes.HTTP_200_OK,
         "responseMessage": "Password Reset Successfully"
+    }
+    return jsonify(response_data)
+
+
+# PASSWORD CHANGE
+@app.route('/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    data = request.json
+
+    # required Fields Validation
+    if len(data) == 0:
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Required Fields are Empty"
+        }
+
+    req_old_password = data.get('oldPassword', '')
+    new_password = data.get('newPassword', '')
+    email = session.get("email_id")
+    print("email: ", email)
+    query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
+    cursor.execute(query, email)
+    result = cursor.fetchone()
+    old_password, is_new = result
+
+    # Validation of the Old Password
+    if old_password != req_old_password:
+        return jsonify({
+            "responseMessage": "Invalid old Password Found",
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
+        })
+
+    # To Check is the User New or Old
+    if is_new == 1:
+        # Update Password
+        query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
+    else:
+        # Update Password
+        query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
+    cursor.execute(query, (new_password, email))
+    connection.commit()
+
+    response_data = {
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Password Changed Successfully"
     }
     return jsonify(response_data)
 

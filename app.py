@@ -15,11 +15,11 @@ app = Flask(__name__)
 jwt = JWTManager(app)
 
 
-# CORS Error Handling
-@app.errorhandler(403)
-def forbidden_error(error):
-    response = jsonify({'responseMessage': 'Forbidden', 'error': str(error), "responseCode": http_status_codes.HTTP_403_FORBIDDEN})
-    return response
+# # CORS Error Handling
+# @app.errorhandler(403)
+# def forbidden_error(error):
+#     response = jsonify({'responseMessage': 'Forbidden', 'error': str(error), "responseCode": http_status_codes.HTTP_403_FORBIDDEN})
+#     return response
 
 
 # ----------------------------- Session Configuration -----------------------------

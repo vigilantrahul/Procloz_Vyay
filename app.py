@@ -11,7 +11,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, JWTMan
 
 app = Flask(__name__)
 CORS(app)
-CORS(app, resources={r"/foo": {"origins": "http://*:port"}}, supports_credentials=True)
+
 jwt = JWTManager(app)
 
 

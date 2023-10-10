@@ -15,13 +15,6 @@ app = Flask(__name__)
 jwt = JWTManager(app)
 
 
-# # CORS Error Handling
-# @app.errorhandler(403)
-# def forbidden_error(error):
-#     response = jsonify({'responseMessage': 'Forbidden', 'error': str(error), "responseCode": http_status_codes.HTTP_403_FORBIDDEN})
-#     return response
-
-
 # ----------------------------- Session Configuration -----------------------------
 app.config['SECRET_KEY'] = 'your_flask_secret_key'
 
@@ -289,7 +282,7 @@ def reset_password():
 
 
 # ------------------------------- Data Fetch API -------------------------------
-@app.route('/get-org', methods=['GET'])
+@app.route('/get-organization', methods=['GET'])
 def get_org():
     qry = f"SELECT * FROM organization"
     cursor.execute(qry)

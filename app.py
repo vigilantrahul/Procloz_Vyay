@@ -203,7 +203,7 @@ def forgot_password():
         connection.commit()
         sender_email = "mverma@procloz.com"
 
-        # Send the OTP to the user's email (implement your email sending logic here)
+        # Send the OTP to the user's email
         msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
         msg.body = f'Your OTP is: {otp}'
         mail.send(msg)

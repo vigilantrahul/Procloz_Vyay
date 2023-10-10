@@ -52,20 +52,20 @@ def login():
 
     if email == '' or pwd == '':
         response_data = {
-            "response_code": http_status_codes.HTTP_400_BAD_REQUEST,
-            "message": "Invalid Credentials Found !!!"
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Invalid Credentials Found !!!"
         }
         return jsonify(response_data)
 
     # Execute the SQL query to check user credentials
-    qry = f"SELECT * FROM userproc05092023_1 WHERE email_id = '{email}' AND password = '{pwd}'"
-    cursor.execute(qry)
+    qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
+    cursor.execute(qry, (email, pwd))
     user_data = cursor.fetchone()
 
     if user_data is None:
         response_data = {
-            "message": "Invalid email or password",
-            "response_code": http_status_codes.HTTP_401_UNAUTHORIZED
+            "responseMessage": "Invalid email or password",
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
         }
         return jsonify(response_data)
 
@@ -75,7 +75,7 @@ def login():
     # Create access token
     access_token = create_access_token(identity=user_id)
 
-    # Create refresh token (optional)
+    # Create refresh token
     refresh_token = create_refresh_token(identity=user_id)
 
     # Set session expiration time (30 minutes from now)
@@ -89,15 +89,15 @@ def login():
 
     # Return the tokens to the client
     response_data = {
-        "response_code": http_status_codes.HTTP_200_OK,
-        "response_message": "Success",
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Success",
         "data": {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "accessToken": access_token,
+            "refreshToken": refresh_token,
             "username": user_data.employee_name,
-            "user_type": user_data.user_type,
+            "userType": user_data.user_type,
             "designation": user_data.employee_business_title,
-            "employee_id": user_data.employee_id
+            "employeeId": user_data.employee_id
         }
     }
     return jsonify(response_data)
@@ -107,12 +107,21 @@ def login():
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
+    # Session Validation
+    existing_refresh_token = session.get('refresh_token')
+    if existing_refresh_token is None:
+        response_data = {
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+            "responseMessage": "Session Expired"
+        }
+        return jsonify(response_data)
+
     # Get the Authorization header from the request
     auth_header = request.headers.get('Authorization')
     if auth_header is None:
         response_data = {
-            "response_code": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "response_message": "Invalid Token Found"
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+            "responseMessage": "Invalid Token Found"
         }
         return jsonify(response_data)
 
@@ -120,19 +129,18 @@ def refresh():
     auth_token = auth_header.split(" ")
     if len(auth_token) != 2:
         response_data = {
-            "response_code": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "response_message": "Invalid Token Found"
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+            "responseMessage": "Invalid Token Found"
         }
         return jsonify(response_data)
 
     auth_token = auth_token[1]
-    existing_refresh_token = session.get('refresh_token')
 
     # Validation of the Valid Refresh Token
     if auth_token != existing_refresh_token:
         response_data = {
-            "response_code": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "response_message": "Invalid Token Found"
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+            "responseMessage": "Invalid Token Found"
         }
         return jsonify(response_data)
 
@@ -143,16 +151,16 @@ def refresh():
     new_access_token = create_access_token(identity=current_user)
     new_refresh_token = create_refresh_token(identity=current_user)
 
-    session['access_token'] = new_access_token
-    session['refresh_token'] = new_refresh_token
+    session['accessToken'] = new_access_token
+    session['refreshToken'] = new_refresh_token
 
     # Return the new access token to the client
     response_data = {
-        "response_code": http_status_codes.HTTP_200_OK,
-        "response_message": "Success",
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Success",
         "data": {
-            "access_token": new_access_token,
-            "refresh_token": new_refresh_token
+            "accessToken": new_access_token,
+            "refreshToken": new_refresh_token
         }
     }
     return jsonify(response_data)
@@ -166,7 +174,6 @@ def generate_otp():
 # FORGET PASSWORD API
 @app.route('/forget-password', methods=['POST'])
 def forgot_password():
-    print("Called Method")
     data = request.get_json()
     email = data.get('email', '')
 
@@ -174,56 +181,100 @@ def forgot_password():
         return jsonify(error='Email found Blank')
 
     # Check if the email exists in the database
-    cursor.execute(f"SELECT * FROM userproc05092023_1 WHERE email_id='{email}'")
+    query = "SELECT * FROM userproc05092023_1 WHERE email_id=?"
+    cursor.execute(query, email)
     user = cursor.fetchone()
 
+    response_data = {}
     if user:
         # Generate a new OTP
         otp = generate_otp()
-        print(otp)
 
-        # Store the OTP in the database (assuming you have an 'otp' column)
-        cursor.execute(f"UPDATE userproc05092023_1 SET otp={otp} WHERE email_id='{email}'")
+        # Timing When OTP got Created
+        current_time = time.time()
+
+        # Store the OTP in the database
+        query = "UPDATE userproc05092023_1 SET otp=?, otp_created_at=? WHERE email_id=?"
+        cursor.execute(query, (otp, current_time, email))
         connection.commit()
-
-        sender_email = ""
+        sender_email = "mverma@procloz.com"
 
         # Send the OTP to the user's email (implement your email sending logic here)
         msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
         msg.body = f'Your OTP is: {otp}'
         mail.send(msg)
+        response_data["responseMessage"] = 'OTP sent to your email'
+        response_data["responseCode"] = http_status_codes.HTTP_200_OK
 
-        return jsonify(message='OTP sent to your email'), 200
+        return jsonify(response_data)
     else:
-        return jsonify(error='Email not found'), 404
+        response_data["responseMessage"] = 'Invalid Email Found'
+        response_data["responseCode"] = http_status_codes.HTTP_404_NOT_FOUND
+
+        return jsonify(response_data)
 
 
 # Database logic for verifying OTP and updating password (you need to implement this)
-def verify_otp_and_reset_password(email, otp, new_password):
-    # Verify OTP and reset the user's password in the database
-    # Implement your database logic here
-    # Return True if OTP is valid and password is successfully reset, else return False
-    return True  # Placeholder, replace with your logic
+def verify_otp_and_reset_password(email, req_otp, new_password):
+    query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
+    cursor.execute(query, email)
+    result = cursor.fetchone()
+    otp, otp_created_at = result
+
+    current_time = int(time.time())
+
+    remaining_time = (current_time - otp_created_at)
+
+    if otp != req_otp or remaining_time <= 10:  # Checking here for Right OTP and Under the valid Timing
+        return False
+
+    # Store the OTP in the database (assuming you have an 'otp' column)
+    query = f"UPDATE userproc05092023_1 SET password=?, otp=NULL, otp_created_at=NULL WHERE email_id=?"
+    cursor.execute(query, (new_password, email))
+    connection.commit()
+    return True
 
 
 # RESET PASSWORD
-@app.route('/reset_password', methods=['POST'])
+@app.route('/reset-password', methods=['POST'])
 def reset_password():
-    email = request.json.get('email', '')
-    otp = request.json.get('otp', '')
-    new_password = request.json.get('new_password', '')
-    sender_email = "mverma@procloz.com"
-    # Verify OTP and reset password
-    if verify_otp_and_reset_password(email, otp, new_password):
-        # Password successfully reset, you can send a confirmation email if needed
-        # Send password reset confirmation email to the user
-        msg = Message('Password Reset Confirmation', sender=sender_email, recipients=[email])
-        msg.body = 'Your password has been successfully reset.'
-        mail.send(msg)
+    data = request.json
 
-        return jsonify(message='Password reset successful'), 200
-    else:
-        return jsonify(error='Invalid OTP or email'), 401
+    # required Fields Validation
+    if len(data) == 0:
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Required Fields are Empty"
+        }
+
+    email = data.get('email', '')
+    otp = data.get('otp', '')
+    new_password = data.get('new_password', '')
+    sender_email = "mverma@procloz.com"
+
+    if email == '' or otp == '' or new_password == '':
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Required Fields are Empty"
+        }
+
+    # Verify OTP and reset password
+    verify_otp = verify_otp_and_reset_password(email, otp, new_password)
+
+    if not verify_otp:
+        response_data = {
+            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+            "responseMessage": "Invalid OTP or email"
+        }
+        return jsonify(response_data)
+    msg = Message('Password Reset Confirmation', sender=sender_email, recipients=[email])
+    msg.body = 'Your password has been successfully reset.'
+    mail.send(msg)
+    response_data = {
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Password Reset Successfully"
+    }
+    return jsonify(response_data)
 
 
 # ------------------------------- Data Fetch API -------------------------------

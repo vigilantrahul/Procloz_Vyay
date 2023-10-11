@@ -231,16 +231,16 @@ def verify_otp_code():
     result = cursor.fetchone()
 
     if result is None:
-        return False
+        return {"responseCode":http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
 
     otp, otp_created_at = result
     current_time = int(time.time())
     remaining_time = (current_time - otp_created_at)
 
-    if otp != req_otp or remaining_time >= 10:  # Checking here for Right OTP and Under the valid Timing
-        return False
+    if otp != req_otp or remaining_time >= 300:  # Checking here for Right OTP and Under the valid Timing
+        return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid OTP Found"}
     else:
-        return True
+        return {"responseCode": http_status_codes.HTTP_200_OK, "responseMessage": "OTP Verified"}
 
 
 # RESET PASSWORD
@@ -325,6 +325,10 @@ def change_password():
         "responseMessage": "Password Changed Successfully"
     }
     return jsonify(response_data)
+
+
+# ------------------------------- Travel API -------------------------------
+
 
 
 # ------------------------------- Data Fetch API -------------------------------

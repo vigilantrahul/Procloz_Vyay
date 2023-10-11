@@ -219,25 +219,21 @@ def forgot_password():
         return jsonify(response_data)
 
 
-# Database logic for verifying OTP and updating password (you need to implement this)
-def verify_otp_and_reset_password(email, req_otp, new_password):
+# Database logic for verifying OTP and updating password
+@app.route("/otp-verify", methods=['POST'])
+def verify_otp_code(email, req_otp):
     query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
     cursor.execute(query, email)
     result = cursor.fetchone()
     otp, otp_created_at = result
 
     current_time = int(time.time())
-
     remaining_time = (current_time - otp_created_at)
 
-    if otp != req_otp or remaining_time <= 10:  # Checking here for Right OTP and Under the valid Timing
+    if otp != req_otp or remaining_time >= 10:  # Checking here for Right OTP and Under the valid Timing
         return False
-
-    # Store the OTP in the database (assuming you have an 'otp' column)
-    query = f"UPDATE userproc05092023_1 SET password=?, otp=NULL, otp_created_at=NULL WHERE email_id=?"
-    cursor.execute(query, (new_password, email))
-    connection.commit()
-    return True
+    else:
+        return True
 
 
 # RESET PASSWORD
@@ -253,18 +249,17 @@ def reset_password():
         }
 
     email = data.get('email', '')
-    otp = data.get('otp', '')
     new_password = data.get('new_password', '')
     sender_email = "mverma@procloz.com"
 
-    if email == '' or otp == '' or new_password == '':
+    if email == '' or new_password == '':
         return {
             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
             "responseMessage": "Required Fields are Empty"
         }
 
     # Verify OTP and reset password
-    verify_otp = verify_otp_and_reset_password(email, otp, new_password)
+    verify_otp = verify_otp_code(email, new_password)
 
     if not verify_otp:
         response_data = {
@@ -272,6 +267,13 @@ def reset_password():
             "responseMessage": "Invalid OTP or email"
         }
         return jsonify(response_data)
+
+    # Store the OTP in the database (assuming you have an 'otp' column)
+    query = f"UPDATE userproc05092023_1 SET password=?, otp=NULL, otp_created_at=NULL WHERE email_id=?"
+    cursor.execute(query, (new_password, email))
+    connection.commit()
+
+    # Sending Email of Success Password Change
     msg = Message('Password Reset Confirmation', sender=sender_email, recipients=[email])
     msg.body = 'Your password has been successfully reset.'
     mail.send(msg)

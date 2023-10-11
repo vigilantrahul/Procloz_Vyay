@@ -102,7 +102,8 @@ def login():
             "username": user_data.employee_name,
             "userType": user_data.user_type,
             "designation": user_data.employee_business_title,
-            "employeeId": user_data.employee_id
+            "employeeId": user_data.employee_id,
+            "is_new": user_data.is_new
         }
     }
     return jsonify(response_data)

@@ -219,7 +219,7 @@ def forgot_password():
         return jsonify(response_data)
 
 
-# Database logic for verifying OTP and updating password (you need to implement this)
+# Database logic for verifying OTP and updating password
 def verify_otp_and_reset_password(email, req_otp, new_password):
     query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
     cursor.execute(query, email)

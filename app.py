@@ -225,13 +225,14 @@ def verify_otp_code():
     data = request.json
     req_otp = data.get('otp', '')
     email = data.get('email', '')
+    req_otp = int(req_otp)
 
     query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
     cursor.execute(query, email)
     result = cursor.fetchone()
 
     if result is None:
-        return {"responseCode":http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
+        return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
 
     otp, otp_created_at = result
     current_time = int(time.time())

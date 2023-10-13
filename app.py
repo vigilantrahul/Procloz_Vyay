@@ -14,7 +14,6 @@ CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net
 
 jwt = JWTManager(app)
 
-
 # ----------------------------- Session Configuration -----------------------------
 app.config['SECRET_KEY'] = 'your_flask_secret_key'
 
@@ -25,14 +24,23 @@ app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 app.config['JWT_ALGORITHM'] = 'HS256'  # HMAC with SHA-256
 
 # ----------------------------- SERVER Configuration -----------------------------
-server_name = 'ibproproclozdbserver.database.windows.net'
-database_name = 'Procloz_vyay'
-username = 'dbadmin'
-password = 'NPY402OYM5GUHBW2$'
+def establish_db_connection():
+    try:
+        server_name = 'ibproproclozdbserver.database.windows.net'
+        database_name = 'Procloz_vyay'
+        username = 'dbadmin'
+        password = 'NPY402OYM5GUHBW2$'
 
-connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
-connection = pyodbc.connect(connection_string)
-cursor = connection.cursor()
+        connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
+        connection = pyodbc.connect(connection_string)
+        cursor = connection.cursor()
+        return connection, cursor
+    except pyodbc.Error as err:
+        error_message = str(err)
+        return None, error_message
+
+# Called to get the Objects
+connection, cursor = establish_db_connection()
 
 sys.path.append('/opt/startup/app_logs')
 sys.path.append('/tmp/8dbb3862660c8b6/antenv/lib/python3.9/site-packages')
@@ -51,6 +59,17 @@ mail = Mail(app)
 # LOGIN API
 @app.route('/login', methods=['POST'])
 def login():
+    print(connection)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
     email = request.json.get('email', '')
     pwd = request.json.get('password', '')
 
@@ -180,6 +199,17 @@ def generate_otp():
 # FORGET PASSWORD API
 @app.route('/forget-password', methods=['POST'])
 def forgot_password():
+    print(connection)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
     data = request.get_json()
     email = data.get('email', '')
 
@@ -248,8 +278,18 @@ def verify_otp_code():
 # RESET PASSWORD
 @app.route('/reset-password', methods=['POST'])
 def reset_password():
-    data = request.json
+    print(connection)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
 
+    data = request.json
     # required Fields Validation
     if len(data) == 0:
         return {
@@ -287,8 +327,18 @@ def reset_password():
 @app.route('/change-password', methods=['POST'])
 @jwt_required()
 def change_password():
-    data = request.json
+    print(connection)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
 
+    data = request.json
     # required Fields Validation
     if len(data) == 0:
         return {
@@ -330,12 +380,47 @@ def change_password():
 
 
 # ------------------------------- Travel API -------------------------------
+# Travel Request Making:
+@app.route('/travel-request', methods=['POST'])
+@jwt_required()
+def travel_request():
+    print(connection)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
 
+    try:
+        data = request.get_json()
+        print(data)
+        return jsonify({"Message": "Success"})
+    except Exception as e:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(e)
+        })
 
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])
 def get_org():
+    print(connection)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
     qry = f"SELECT * FROM organization"
     cursor.execute(qry)
     organization_data = cursor.fetchall()

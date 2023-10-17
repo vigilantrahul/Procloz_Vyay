@@ -377,12 +377,28 @@ def change_password():
         try:
             req_old_password = data.get('oldPassword', '')
             new_password = data.get('newPassword', '')
-            email = session.get("emailId")
 
+            # Validating the Required Fields
+            if req_old_password == '' or new_password == '':
+                return {
+                    "responseCode": 500,
+                    "responseMessage": "Required Field is Empty"
+                }
+
+            # Validating the Session Variable
+            if 'emailId' not in session:
+                session_response = {
+                    "responseMessage": "Session Expired !",
+                    "responseCode": custom_status_codes.expired_session
+                }
+                return jsonify(session_response)
+
+            email = session.get("emailId")
             query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
             cursor.execute(query, email)
             result = cursor.fetchone()
-            old_password, is_new = result
+            if result is not None:
+                old_password, is_new = result
         except Exception as err2:
             return {
                 "responseCode": 500,
@@ -444,7 +460,12 @@ def request_initiate():
 
     # Verifying Session:
     if "organization" not in session or "employeeId" not in session:
-        print("Yes it is")
+        print("Session Expired !!")
+        session_response = {
+            "responseMessage": "Session Expired !",
+            "responseCode": custom_status_codes.expired_session
+        }
+        return jsonify(session_response)
 
     # Saving the Request Data
     try:

@@ -14,8 +14,12 @@ CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net
 
 jwt = JWTManager(app)
 
+
+SESSION_TIMEOUT = 3600  # 3600 seconds = 1 hour
+
 # ----------------------------- Session Configuration -----------------------------
 app.config['SECRET_KEY'] = 'your_flask_secret_key'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=SESSION_TIMEOUT)
 
 # ----------------------------- JWT Configuration -----------------------------
 app.config[

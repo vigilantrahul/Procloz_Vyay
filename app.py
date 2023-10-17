@@ -6,7 +6,7 @@ import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session
 from flask_cors import CORS
-from constants import http_status_codes
+from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 
 app = Flask(__name__)
@@ -18,10 +18,28 @@ jwt = JWTManager(app)
 app.config['SECRET_KEY'] = 'your_flask_secret_key'
 
 # ----------------------------- JWT Configuration -----------------------------
-app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Change this to a secure random secret key
+app.config[
+    'JWT_SECRET_KEY'] = '\xe3\x94~\x80\xf0\x14\xe1Uu\x07\xef\xa9\t\x9d\xdfZ\xd1\xbcA\xb8\xd4x'  # Need to Change
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=15)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 app.config['JWT_ALGORITHM'] = 'HS256'  # HMAC with SHA-256
+
+
+# Custom response for expired tokens
+@jwt.expired_token_loader
+def expired_token_callback(arg1, arg2):
+    return jsonify({'responseMessage': 'Token has expired',
+                    'responseCode': custom_status_codes.expired_token})
+
+
+# Custom response for invalid tokens
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({
+                    'responseMessage': 'Invalid token',
+                    'responseCode': custom_status_codes.invalid_token
+    })
+
 
 # ----------------------------- SERVER Configuration -----------------------------
 def establish_db_connection():
@@ -38,6 +56,7 @@ def establish_db_connection():
     except pyodbc.Error as err:
         error_message = str(err)
         return None, error_message
+
 
 # Called to get the Objects
 connection, cursor = establish_db_connection()
@@ -104,12 +123,14 @@ def login():
     # Set session expiration time (30 minutes from now)
     session['session_expiration'] = time.time() + 30 * 60
 
-    session['user_id'] = user_id
-    session['access_token'] = access_token
-    session['refresh_token'] = refresh_token
+    session['userId'] = user_id
+    session['organization'] = user_data.organization
+    session['accessToken'] = access_token
+    session['refreshToken'] = refresh_token
     session['username'] = user_data.employee_name
-    session['user_type'] = user_data.user_type
-    session['email_id'] = user_data.email_id
+    session['userType'] = user_data.user_type
+    session['emailId'] = user_data.email_id
+    session['employeeId'] = user_data.employee_id
 
     # Return the tokens to the client
     response_data = {
@@ -132,8 +153,9 @@ def login():
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
+    existing_refresh_token = session.get('refreshToken')
+
     # Session Validation
-    existing_refresh_token = session.get('refresh_token')
     if existing_refresh_token is None:
         response_data = {
             "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
@@ -149,7 +171,6 @@ def refresh():
             "responseMessage": "Invalid Token Found"
         }
         return jsonify(response_data)
-
     # Taking Token from the Auth Header
     auth_token = auth_header.split(" ")
     if len(auth_token) != 2:
@@ -175,8 +196,7 @@ def refresh():
     # Create a new access token
     new_access_token = create_access_token(identity=current_user)
     new_refresh_token = create_refresh_token(identity=current_user)
-
-    session['accessToken'] = new_access_token
+    session['access_Token'] = new_access_token
     session['refreshToken'] = new_refresh_token
 
     # Return the new access token to the client
@@ -379,12 +399,11 @@ def change_password():
     return jsonify(response_data)
 
 
-# ------------------------------- Travel API -------------------------------
-# Travel Request Making:
+# ------------------------------- Request Initiating API -------------------------------
+# Request Common Data Insertion:
 @app.route('/travel-request', methods=['POST'])
 @jwt_required()
-def travel_request():
-    print(connection)
+def request_initiate():
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -395,9 +414,23 @@ def travel_request():
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
 
+    # Verifying Session:
+    if "organization" not in session or "employeeId" not in session:
+        print("Yes it is")
+
+    # Saving the Request Data
     try:
         data = request.get_json()
-        print(data)
+        employee_id = session.get('employeeId')
+        organization = session.get('organization')
+        request_id = data.get('requestId')
+        request_name = data.get('requestName')
+        request_policy = data.get('requestPolicy')
+        start_date = data.get('startDate')
+        end_date = data.get('endDate')
+
+        sql_query = "INSERT INTO travelrequest (request_id, request_name, request_policy, start_date, end_date) VALUES (?, ?, ?)"
+
         return jsonify({"Message": "Success"})
     except Exception as e:
         return jsonify({
@@ -409,6 +442,7 @@ def travel_request():
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])
+@jwt_required()
 def get_org():
     print(connection)
     # Validation for the Connection on DB/Server

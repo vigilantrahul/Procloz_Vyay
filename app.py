@@ -442,7 +442,6 @@ def request_initiate():
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])
-@jwt_required()
 def get_org():
     print(connection)
     # Validation for the Connection on DB/Server

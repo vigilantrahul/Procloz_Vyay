@@ -36,8 +36,8 @@ def expired_token_callback(arg1, arg2):
 @jwt.invalid_token_loader
 def invalid_token_callback(error):
     return jsonify({
-                    'responseMessage': 'Invalid token',
-                    'responseCode': custom_status_codes.invalid_token
+        'responseMessage': 'Invalid token',
+        'responseCode': custom_status_codes.invalid_token
     })
 
 
@@ -347,56 +347,63 @@ def reset_password():
 @app.route('/change-password', methods=['POST'])
 @jwt_required()
 def change_password():
-    print(connection)
-    # Validation for the Connection on DB/Server
-    if not connection:
-        custom_error_response = {
-            "responseMessage": "Database Connection Error",
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "reason": "Failed to connect to the database. Please try again later."
-        }
-        # Return the custom error response with a 500 status code
-        return jsonify(custom_error_response)
+    try:
+        print(connection)
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
 
-    data = request.json
-    # required Fields Validation
-    if len(data) == 0:
+        data = request.json
+        # required Fields Validation
+        if len(data) == 0:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        req_old_password = data.get('oldPassword', '')
+        new_password = data.get('newPassword', '')
+        email = session.get("email_id")
+
+        query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
+        cursor.execute(query, email)
+        result = cursor.fetchone()
+        old_password, is_new = result
+
+        # Validation of the Old Password
+        if old_password != req_old_password:
+            return jsonify({
+                "responseMessage": "Invalid old Password Found",
+                "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
+            })
+
+        # To Check is the User New or Old
+        if is_new == 1:
+            # Update Password
+            query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
+        else:
+            # Update Password
+            query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
+        cursor.execute(query, (new_password, email))
+        connection.commit()
+
+        response_data = {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Password Changed Successfully"
+        }
+        return jsonify(response_data)
+    except Exception as e:
         return {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-            "responseMessage": "Required Fields are Empty"
+            "responseCode": 500,
+            "responseMessage": "Something Went Wrong",
+            "error": str(e)
         }
-
-    req_old_password = data.get('oldPassword', '')
-    new_password = data.get('newPassword', '')
-    email = session.get("email_id")
-
-    query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
-    cursor.execute(query, email)
-    result = cursor.fetchone()
-    old_password, is_new = result
-
-    # Validation of the Old Password
-    if old_password != req_old_password:
-        return jsonify({
-            "responseMessage": "Invalid old Password Found",
-            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
-        })
-
-    # To Check is the User New or Old
-    if is_new == 1:
-        # Update Password
-        query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
-    else:
-        # Update Password
-        query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
-    cursor.execute(query, (new_password, email))
-    connection.commit()
-
-    response_data = {
-        "responseCode": http_status_codes.HTTP_200_OK,
-        "responseMessage": "Password Changed Successfully"
-    }
-    return jsonify(response_data)
 
 
 # ------------------------------- Request Initiating API -------------------------------
@@ -429,7 +436,11 @@ def request_initiate():
         start_date = data.get('startDate')
         end_date = data.get('endDate')
 
-        sql_query = "INSERT INTO travelrequest (request_id, request_name, request_policy, start_date, end_date) VALUES (?, ?, ?)"
+        sql_query = "INSERT INTO travelrequest (organization, user_id, request_id, request_name, request_policy, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)"
+
+        cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date,
+                       end_date)
+        connection.commit()
 
         return jsonify({"Message": "Success"})
     except Exception as e:

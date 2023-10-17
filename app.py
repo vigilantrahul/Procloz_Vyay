@@ -359,7 +359,7 @@ def change_password():
             # Return the custom error response with a 500 status code
             return jsonify(custom_error_response)
 
-        data = request.json
+        data = request.get_json()
         # required Fields Validation
         if len(data) == 0:
             return {

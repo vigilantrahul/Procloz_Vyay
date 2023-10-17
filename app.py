@@ -359,45 +359,66 @@ def change_password():
             # Return the custom error response with a 500 status code
             return jsonify(custom_error_response)
 
-        data = request.get_json()
-        # required Fields Validation
-        if len(data) == 0:
+        try:
+            data = request.get_json()
+            # required Fields Validation
+            if len(data) == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
+        except Exception as err1:
             return {
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Required Fields are Empty"
+                "responseCode": 500,
+                "responseMessage": "Something Went Wrong 1",
+                "error": str(err1)
             }
 
-        req_old_password = data.get('oldPassword', '')
-        new_password = data.get('newPassword', '')
-        email = session.get("email_id")
+        try:
+            req_old_password = data.get('oldPassword', '')
+            new_password = data.get('newPassword', '')
+            email = session.get("emailId")
 
-        query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
-        cursor.execute(query, email)
-        result = cursor.fetchone()
-        old_password, is_new = result
+            query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
+            cursor.execute(query, email)
+            result = cursor.fetchone()
+            old_password, is_new = result
+        except Exception as err2:
+            return {
+                "responseCode": 500,
+                "responseMessage": "Something Went 2",
+                "error": str(err2)
+            }
 
-        # Validation of the Old Password
-        if old_password != req_old_password:
-            return jsonify({
-                "responseMessage": "Invalid old Password Found",
-                "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
-            })
+        try:
+            # Validation of the Old Password
+            if old_password != req_old_password:
+                return jsonify({
+                    "responseMessage": "Invalid old Password Found",
+                    "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
+                })
 
-        # To Check is the User New or Old
-        if is_new == 1:
-            # Update Password
-            query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
-        else:
-            # Update Password
-            query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
-        cursor.execute(query, (new_password, email))
-        connection.commit()
+            # To Check is the User New or Old
+            if is_new == 1:
+                # Update Password
+                query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
+            else:
+                # Update Password
+                query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
+            cursor.execute(query, (new_password, email))
+            connection.commit()
 
-        response_data = {
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Password Changed Successfully"
-        }
-        return jsonify(response_data)
+            response_data = {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Password Changed Successfully"
+            }
+            return jsonify(response_data)
+        except Exception as err3:
+            return {
+                "responseCode": 500,
+                "responseMessage": "Something Went Wrong 3",
+                "error": str(err3)
+            }
     except Exception as e:
         return {
             "responseCode": 500,

@@ -1,7 +1,7 @@
 import random
 import sys
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session
@@ -14,7 +14,6 @@ CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net
 
 jwt = JWTManager(app)
 
-
 SESSION_TIMEOUT = 3600  # 3600 seconds = 1 hour
 
 # ----------------------------- Session Configuration -----------------------------
@@ -24,7 +23,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=SESSION_TIMEOUT)
 # ----------------------------- JWT Configuration -----------------------------
 app.config[
     'JWT_SECRET_KEY'] = '\xe3\x94~\x80\xf0\x14\xe1Uu\x07\xef\xa9\t\x9d\xdfZ\xd1\xbcA\xb8\xd4x'  # Need to Change
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=15)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=30)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 app.config['JWT_ALGORITHM'] = 'HS256'  # HMAC with SHA-256
 
@@ -451,7 +450,7 @@ def change_password():
 
 
 # ------------------------------- Request Initiating API -------------------------------
-# Request Common Data Insertion:
+# 1. Request Common Data Insertion:
 @app.route('/travel-request', methods=['POST'])
 @jwt_required()
 def request_initiate():
@@ -467,7 +466,6 @@ def request_initiate():
 
     # Verifying Session:
     if "organization" not in session or "employeeId" not in session:
-        print("Session Expired !!")
         session_response = {
             "responseMessage": "Session Expired !",
             "responseCode": custom_status_codes.expired_session
@@ -477,25 +475,102 @@ def request_initiate():
     # Saving the Request Data
     try:
         data = request.get_json()
+        # Validation of the required Fields:
+        if "requestId" not in data or "requestName" not in data or "requestPolicy" not in data or "startDate" not in data or "endDate" not in data or "purpose" not in data:
+            required_data = {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields Empty"
+            }
+            return jsonify(required_data)
+
         employee_id = session.get('employeeId')
         organization = session.get('organization')
         request_id = data.get('requestId')
         request_name = data.get('requestName')
         request_policy = data.get('requestPolicy')
+        purpose = data.get('purpose')
         start_date = data.get('startDate')
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         end_date = data.get('endDate')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        status = data.get('status')
 
-        sql_query = "INSERT INTO travelrequest (organization, user_id, request_id, request_name, request_policy, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        # Validating the Request_ID already exist or not:
+        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, request_id)
+        result = cursor.fetchone()
+        if result is not None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request ID Already Exists!!"
+            }
 
-        cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date, end_date)
+        sql_query = "INSERT INTO travelrequest (organization, user_id, request_id, request_name, request_policy, start_date, end_date, purpose, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date,
+                       end_date, purpose, status)
         connection.commit()
 
-        return jsonify({"Message": "Success"})
+        return jsonify({"requestMessage": "Travel Request Saved", "requestCode": http_status_codes.HTTP_200_OK})
     except Exception as e:
         return jsonify({
             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
             "responseMessage": "Something Went Wrong",
             "reason": str(e)
+        })
+
+
+# 2. updating Cost Center
+@app.route('/request-cost-center', methods=['POST'])
+@jwt_required()
+def update_cost_center():
+    try:
+        data = request.get_json()
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Verifying Session:
+        if "organization" not in session or "employeeId" not in session:
+            session_response = {
+                "responseMessage": "Session Expired !",
+                "responseCode": custom_status_codes.expired_session
+            }
+            return jsonify(session_response)
+
+        request_id = data.get('requestId')
+        cost_center = data.get('costCenter')
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, request_id)
+        result = cursor.fetchone()
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request ID Not Exists!!"
+            }
+
+        # Validating Cost Center in Travel Request Table:ss
+
+        # Updating Cost Center in the request Table:
+        query = f"UPDATE travelrequest SET cost_center=? WHERE request_id=?"
+        cursor.execute(query, (cost_center, request_id))
+        connection.commit()
+        return jsonify({
+                            "responseMessage": "Cost Center Saved",
+                            "responseCode": http_status_codes.HTTP_200_OK
+                        })
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
         })
 
 
@@ -510,13 +585,7 @@ def get_org():
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
-        # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
-    # session["dummy"] = "Dummy Data"
-    # task_list = {
-    #     "dummy_data": session.get('dummy')
-    # }
-
     qry = f"SELECT * FROM organization"
     cursor.execute(qry)
     organization_data = cursor.fetchall()

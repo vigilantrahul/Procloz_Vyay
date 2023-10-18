@@ -487,8 +487,7 @@ def request_initiate():
 
         sql_query = "INSERT INTO travelrequest (organization, user_id, request_id, request_name, request_policy, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)"
 
-        cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date,
-                       end_date)
+        cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date, end_date)
         connection.commit()
 
         return jsonify({"Message": "Success"})
@@ -513,17 +512,17 @@ def get_org():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
-    session["dummy"] = "Dummy Data"
-    task_list = {
-        "dummy_data": session.get('dummy')
-    }
+    # session["dummy"] = "Dummy Data"
+    # task_list = {
+    #     "dummy_data": session.get('dummy')
+    # }
 
-    # qry = f"SELECT * FROM organization"
-    # cursor.execute(qry)
-    # organization_data = cursor.fetchall()
-    # task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
-    #               "Company Id": org.company_id, "Company Contact Name": org.company_contact_name} for org in
-    #              organization_data]
+    qry = f"SELECT * FROM organization"
+    cursor.execute(qry)
+    organization_data = cursor.fetchall()
+    task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
+                  "Company ID": org.company_id, "Company Contact Name": org.company_contact_name} for org in
+                 organization_data]
     return jsonify(task_list)
 
 

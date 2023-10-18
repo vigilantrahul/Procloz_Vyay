@@ -81,79 +81,85 @@ mail = Mail(app)
 # LOGIN API
 @app.route('/login', methods=['POST'])
 def login():
-    print(connection)
-    # Validation for the Connection on DB/Server
-    if not connection:
-        custom_error_response = {
-            "responseMessage": "Database Connection Error",
+    try:
+        print(connection)
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        email = request.json.get('email', '')
+        pwd = request.json.get('password', '')
+
+        if email == '' or pwd == '':
+            response_data = {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Credentials Found !!!"
+            }
+            return jsonify(response_data)
+
+        # Execute the SQL query to check user credentials
+        qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
+        cursor.execute(qry, (email, pwd))
+        user_data = cursor.fetchone()
+
+        if user_data is None:
+            response_data = {
+                "responseMessage": "Invalid email or password",
+                "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
+            }
+            return jsonify(response_data)
+
+        # Get the user id from the user data obtained from the query
+        user_id = user_data.id  # assuming id is the column name for user id in your database
+
+        # Create access token
+        access_token = create_access_token(identity=user_id)
+
+        # Create refresh token
+        refresh_token = create_refresh_token(identity=user_id)
+
+        # Set session expiration time (30 minutes from now)
+        session['session_expiration'] = time.time() + 30 * 60
+
+        session['userId'] = user_id
+        session['organization'] = user_data.organization
+        session['accessToken'] = access_token
+        session['refreshToken'] = refresh_token
+        session['username'] = user_data.employee_name
+        session['userType'] = user_data.user_type
+        session['emailId'] = user_data.email_id
+        session['employeeId'] = user_data.employee_id
+
+        session_id = request.cookies.get('session')
+        print("Session ID: ", session_id)
+
+        # Return the tokens to the client
+        response_data = {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Success",
+            "data": {
+                "accessToken": access_token,
+                "refreshToken": refresh_token,
+                "username": user_data.employee_name,
+                "userType": user_data.user_type,
+                "designation": user_data.employee_business_title,
+                "employeeId": user_data.employee_id,
+                "is_new": user_data.is_new
+            }
+        }
+        return jsonify(response_data)
+    except Exception as err:
+        return jsonify({
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "reason": "Failed to connect to the database. Please try again later."
-        }
-        # Return the custom error response with a 500 status code
-        return jsonify(custom_error_response)
-
-    email = request.json.get('email', '')
-    pwd = request.json.get('password', '')
-
-    if email == '' or pwd == '':
-        response_data = {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-            "responseMessage": "Invalid Credentials Found !!!"
-        }
-        return jsonify(response_data)
-
-    # Execute the SQL query to check user credentials
-    qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
-    cursor.execute(qry, (email, pwd))
-    user_data = cursor.fetchone()
-
-    if user_data is None:
-        response_data = {
-            "responseMessage": "Invalid email or password",
-            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
-        }
-        return jsonify(response_data)
-
-    # Get the user id from the user data obtained from the query
-    user_id = user_data.id  # assuming id is the column name for user id in your database
-
-    # Create access token
-    access_token = create_access_token(identity=user_id)
-
-    # Create refresh token
-    refresh_token = create_refresh_token(identity=user_id)
-
-    # Set session expiration time (30 minutes from now)
-    session['session_expiration'] = time.time() + 30 * 60
-
-    session['userId'] = user_id
-    session['organization'] = user_data.organization
-    session['accessToken'] = access_token
-    session['refreshToken'] = refresh_token
-    session['username'] = user_data.employee_name
-    session['userType'] = user_data.user_type
-    session['emailId'] = user_data.email_id
-    session['employeeId'] = user_data.employee_id
-
-    session_id = request.cookies.get('session')
-    print("Session ID: ", session_id)
-
-    # Return the tokens to the client
-    response_data = {
-        "responseCode": http_status_codes.HTTP_200_OK,
-        "responseMessage": "Success",
-        "data": {
-            "accessToken": access_token,
-            "refreshToken": refresh_token,
-            "username": user_data.employee_name,
-            "userType": user_data.user_type,
-            "designation": user_data.employee_business_title,
-            "employeeId": user_data.employee_id,
-            "is_new": user_data.is_new
-        }
-    }
-    return jsonify(response_data)
-
+            "responseMessage": "Something Went Wrong",
+            "error": str(err)
+        })
 
 # REFRESH API
 @app.route('/refresh', methods=['POST'])

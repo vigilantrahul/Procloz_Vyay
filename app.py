@@ -136,6 +136,9 @@ def login():
     session['emailId'] = user_data.email_id
     session['employeeId'] = user_data.employee_id
 
+    session_id = request.cookies.get('session')
+    print("Session ID: ", session_id)
+
     # Return the tokens to the client
     response_data = {
         "responseCode": http_status_codes.HTTP_200_OK,
@@ -510,13 +513,17 @@ def get_org():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+    session["dummy"] = "Dummy Data"
+    task_list = {
+        "dummy_data": session.get('dummy')
+    }
 
-    qry = f"SELECT * FROM organization"
-    cursor.execute(qry)
-    organization_data = cursor.fetchall()
-    task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
-                  "Company Id": org.company_id, "Company Contact Name": org.company_contact_name} for org in
-                 organization_data]
+    # qry = f"SELECT * FROM organization"
+    # cursor.execute(qry)
+    # organization_data = cursor.fetchall()
+    # task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
+    #               "Company Id": org.company_id, "Company Contact Name": org.company_contact_name} for org in
+    #              organization_data]
     return jsonify(task_list)
 
 

@@ -8,6 +8,8 @@ from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
+from loguru import logger
+
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -15,6 +17,10 @@ CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net
 jwt = JWTManager(app)
 
 SESSION_TIMEOUT = 3600  # 3600 seconds = 1 hour
+
+# ----------------------------- Debug Logs Configuration -----------------------------
+logger.add("debug.log", rotation="1 week", level="DEBUG")  # Writes logs to debug.log file
+logger.add(sys.stderr, level="DEBUG")  # Also outputs logs to the console for debugging
 
 # ----------------------------- Session Configuration -----------------------------
 app.config['SECRET_KEY'] = 'your_flask_secret_key'
@@ -81,6 +87,7 @@ mail = Mail(app)
 # LOGIN API
 @app.route('/login', methods=['POST'])
 def login():
+    logger.debug("Endpoint accessed: /login")
     return jsonify("i am here")
     # try:
     #     print(connection)

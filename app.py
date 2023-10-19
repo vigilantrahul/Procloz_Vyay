@@ -85,7 +85,7 @@ mail = Mail(app)
 
 # ------------------------------- Debug Log API -------------------------------
 # Reading Logs:
-@app.route('/read-log', methods=['POST'])
+@app.route('/read-log', methods=['GET'])
 def log_reader():
     current_path = os.getcwd()
     file_path = current_path + "\debug.log"

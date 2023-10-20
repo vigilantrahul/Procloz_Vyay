@@ -510,6 +510,7 @@ def request_initiate():
                 "responseMessage": "(DEBUG) - Need Organization ID and Employee ID"
             }
         organization = data.get('organization')
+        employee_id = data.get('employeeId')
 
         # Validating the Organization_ID already exist or not:
         query = "SELECT TOP 1 1 AS exists_flag FROM organization WHERE company_id = ?"
@@ -529,7 +530,7 @@ def request_initiate():
             }
             return jsonify(required_data)
 
-        employee_id = session.get('employeeId')
+        employee_id = employee_id
         organization = organization
         request_id = data.get('requestId')
         request_name = data.get('requestName')
@@ -711,6 +712,10 @@ def get_org():
                   "Company ID": org.company_id, "Company Contact Name": org.company_contact_name} for org in
                  organization_data]
     return jsonify(task_list)
+
+
+# ------------------------------- Drop Down API -------------------------------
+# Request Policy Drop Down API
 
 
 if __name__ == '__main__':

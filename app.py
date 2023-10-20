@@ -165,6 +165,7 @@ def login():
                 "accessToken": access_token,
                 "refreshToken": refresh_token,
                 "username": user_data.employee_name,
+                "emailId": user_data.email_id,
                 "userType": user_data.user_type,
                 "designation": user_data.employee_business_title,
                 "employeeId": user_data.employee_id,
@@ -716,6 +717,14 @@ def get_org():
 
 # ------------------------------- Drop Down API -------------------------------
 # Request Policy Drop Down API
+@app.route('/drop-down/cost-center', methods=['GET'])
+def dropdown_cost_center():
+    pass
+
+
+@app.route('/drop-down/request-policy', methods=['GET'])
+def dropdown_request_policy():
+    query = "Select request_policy_id, request_policy_data"
 
 
 if __name__ == '__main__':

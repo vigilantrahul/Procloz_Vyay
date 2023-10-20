@@ -88,7 +88,7 @@ mail = Mail(app)
 @app.route('/read-log', methods=['GET'])
 def log_reader():
     current_path = os.getcwd()
-    file_path = current_path + "\debug.log"
+    file_path = f'{current_path}\debug.log'
     try:
         with open(file_path, 'r') as file:
             file_content = file.read()
@@ -168,7 +168,8 @@ def login():
                 "userType": user_data.user_type,
                 "designation": user_data.employee_business_title,
                 "employeeId": user_data.employee_id,
-                "is_new": user_data.is_new
+                "is_new": user_data.is_new,
+                "organization": user_data.organization
             }
         }
         return jsonify(response_data)
@@ -184,42 +185,43 @@ def login():
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    existing_refresh_token = session.get('refreshToken')
+    # existing_refresh_token = session.get('refreshToken')
 
-    # Session Validation
-    if existing_refresh_token is None:
-        response_data = {
-            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "responseMessage": "Session Expired"
-        }
-        return jsonify(response_data)
+    # # Session Validation
+    # if existing_refresh_token is None:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Session Expired"
+    #     }
+    #     return jsonify(response_data)
 
-    # Get the Authorization header from the request
-    auth_header = request.headers.get('Authorization')
-    if auth_header is None:
-        response_data = {
-            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "responseMessage": "Invalid Token Found"
-        }
-        return jsonify(response_data)
-    # Taking Token from the Auth Header
-    auth_token = auth_header.split(" ")
-    if len(auth_token) != 2:
-        response_data = {
-            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "responseMessage": "Invalid Token Found"
-        }
-        return jsonify(response_data)
+    # # Get the Authorization header from the request
+    # auth_header = request.headers.get('Authorization')
+    # if auth_header is None:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Invalid Token Found"
+    #     }
+    #     return jsonify(response_data)
+    #
+    # # Taking Token from the Auth Header
+    # auth_token = auth_header.split(" ")
+    # if len(auth_token) != 2:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Invalid Token Found"
+    #     }
+    #     return jsonify(response_data)
+    #
+    # auth_token = auth_token[1]
 
-    auth_token = auth_token[1]
-
-    # Validation of the Valid Refresh Token
-    if auth_token != existing_refresh_token:
-        response_data = {
-            "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-            "responseMessage": "Invalid Token Found"
-        }
-        return jsonify(response_data)
+    # # Validation of the Valid Refresh Token
+    # if auth_token != existing_refresh_token:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Invalid Token Found"
+    #     }
+    #     return jsonify(response_data)
 
     # Taking Identity From the Refresh Token
     current_user = get_jwt_identity()
@@ -416,15 +418,16 @@ def change_password():
                     "responseMessage": "Required Field is Empty"
                 }
 
-            # Validating the Session Variable
-            if 'emailId' not in session:
-                session_response = {
-                    "responseMessage": "Session Expired !",
-                    "responseCode": custom_status_codes.expired_session
-                }
-                return jsonify(session_response)
+            # # Validating the Session Variable
+            # if 'emailId' not in session:
+            #     session_response = {
+            #         "responseMessage": "Session Expired !",
+            #         "responseCode": custom_status_codes.expired_session
+            #     }
+            #     return jsonify(session_response)
 
-            email = session.get("emailId")
+            # email = session.get("emailId")
+            email = data.get("emailId")
             query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
             cursor.execute(query, email)
             result = cursor.fetchone()
@@ -489,17 +492,35 @@ def request_initiate():
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
 
-    # Verifying Session:
-    if "organization" not in session or "employeeId" not in session:
-        session_response = {
-            "responseMessage": "Session Expired !",
-            "responseCode": custom_status_codes.expired_session
-        }
-        return jsonify(session_response)
+    # # Verifying Session:
+    # if "organization" not in session or "employeeId" not in session:
+    #     session_response = {
+    #         "responseMessage": "Session Expired !",
+    #         "responseCode": custom_status_codes.expired_session
+    #     }
+    #     return jsonify(session_response)
 
     # Saving the Request Data
+
     try:
         data = request.get_json()
+        if "organization" not in data or "employeeId" not in data:
+            return {
+                "responseCode": 400,
+                "responseMessage": "(DEBUG) - Need Organization ID and Employee ID"
+            }
+        organization = data.get('organization')
+
+        # Validating the Organization_ID already exist or not:
+        query = "SELECT TOP 1 1 AS exists_flag FROM organization WHERE company_id = ?"
+        cursor.execute(query, organization)
+        result = cursor.fetchone()
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Organization ID is Invalid!!"
+            }
+
         # Validation of the required Fields:
         if "requestId" not in data or "requestName" not in data or "requestPolicy" not in data or "startDate" not in data or "endDate" not in data or "purpose" not in data:
             required_data = {
@@ -509,7 +530,7 @@ def request_initiate():
             return jsonify(required_data)
 
         employee_id = session.get('employeeId')
-        organization = session.get('organization')
+        organization = organization
         request_id = data.get('requestId')
         request_name = data.get('requestName')
         request_policy = data.get('requestPolicy')
@@ -581,7 +602,7 @@ def update_cost_center():
                 "responseMessage": "Request ID Not Exists!!"
             }
 
-        # Validating Cost Center in Travel Request Table:ss
+        # Validating Cost Center in Travel Request Tables:
 
         # Updating Cost Center in the request Table:
         query = f"UPDATE travelrequest SET cost_center=? WHERE request_id=?"
@@ -591,6 +612,78 @@ def update_cost_center():
             "responseMessage": "Cost Center Saved",
             "responseCode": http_status_codes.HTTP_200_OK
         })
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+# 4. Request Hotel on Travel
+@app.route('/request-hotel', methods=['POST'])
+@jwt_required()
+def request_hotel():
+    try:
+        data = request.get_json()
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Verifying Session:
+        if "organization" not in session or "employeeId" not in session:
+            session_response = {
+                "responseMessage": "Session Expired !",
+                "responseCode": custom_status_codes.expired_session
+            }
+            return jsonify(session_response)
+
+        # Validation of Data:
+        if "requestId" not in data or "hotels" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        # Validating request_id in travel Request Table:
+        request_id = data.get("requestId")
+        hotels = data.get("hotels")
+        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, request_id)
+        result = cursor.fetchone()
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request ID Not Exists!!"
+            }
+
+        if len(hotels) < 0 or len(hotels) > 5:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
+            }
+
+        for hotel in hotels:
+            hotel['requestId'] = request_id
+
+        # Construct the SQL query for bulk insert
+        values = ', '.join([
+            f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['requestId']}')"
+            for hotel in hotels
+        ])
+        print("values: ", values)
+        query = f"INSERT INTO hotel (city_name, check_in, check_out, estimated_cost, request_id) VALUES {values}"
+
+        # Execute the query
+        cursor.execute(query)
+        connection.commit()
+
     except Exception as err:
         return jsonify({
             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,

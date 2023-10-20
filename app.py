@@ -558,7 +558,7 @@ def request_initiate():
                        end_date, purpose, status)
         connection.commit()
 
-        return jsonify({"requestMessage": "Travel Request Saved", "requestCode": http_status_codes.HTTP_200_OK})
+        return jsonify({"responseMessage": "Travel Request Saved", "responseCode": http_status_codes.HTTP_200_OK})
     except Exception as e:
         return jsonify({
             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,

@@ -583,13 +583,19 @@ def update_cost_center():
             # Return the custom error response with a 500 status code
             return jsonify(custom_error_response)
 
-        # Verifying Session:
-        if "organization" not in session or "employeeId" not in session:
-            session_response = {
-                "responseMessage": "Session Expired !",
-                "responseCode": custom_status_codes.expired_session
+        # # Verifying Session:
+        # if "organization" not in session or "employeeId" not in session:
+        #     session_response = {
+        #         "responseMessage": "Session Expired !",
+        #         "responseCode": custom_status_codes.expired_session
+        #     }
+        #     return jsonify(session_response)
+
+        if "requestId" not in data or "costCenter" not in data:
+            return {
+                "responseCode": 400,
+                "responseMessage": "(DEBUG) - Need Request ID and Cost Center"
             }
-            return jsonify(session_response)
 
         request_id = data.get('requestId')
         cost_center = data.get('costCenter')
@@ -622,6 +628,13 @@ def update_cost_center():
         })
 
 
+# 3. Request Transportation on Travel
+@app.route('/request-transport', methods=['POST'])
+@jwt_required()
+def request_transportation():
+    pass
+
+
 # 4. Request Hotel on Travel
 @app.route('/request-hotel', methods=['POST'])
 @jwt_required()
@@ -638,13 +651,13 @@ def request_hotel():
             # Return the custom error response with a 500 status code
             return jsonify(custom_error_response)
 
-        # Verifying Session:
-        if "organization" not in session or "employeeId" not in session:
-            session_response = {
-                "responseMessage": "Session Expired !",
-                "responseCode": custom_status_codes.expired_session
-            }
-            return jsonify(session_response)
+        # # Verifying Session:
+        # if "organization" not in session or "employeeId" not in session:
+        #     session_response = {
+        #         "responseMessage": "Session Expired !",
+        #         "responseCode": custom_status_codes.expired_session
+        #     }
+        #     return jsonify(session_response)
 
         # Validation of Data:
         if "requestId" not in data or "hotels" not in data:
@@ -679,12 +692,16 @@ def request_hotel():
             f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['requestId']}')"
             for hotel in hotels
         ])
-        print("values: ", values)
         query = f"INSERT INTO hotel (city_name, check_in, check_out, estimated_cost, request_id) VALUES {values}"
 
         # Execute the query
         cursor.execute(query)
         connection.commit()
+
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Hotels Saved Successfully",
+        })
 
     except Exception as err:
         return jsonify({
@@ -693,6 +710,90 @@ def request_hotel():
             "reason": str(err)
         })
 
+
+# 5. Request PerDiem on Travel
+@jwt_required()
+@app.route('/request-perdiem', methods=['POST'])
+def request_perdiem():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Data:
+        if "requestId" not in data or "diems" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        diems = data.get("diems")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, request_id)
+        result = cursor.fetchone()
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request ID Not Exists!!"
+            }
+
+        # Limit of the Diems (Max. 5)
+        if len(diems) < 0 or len(diems) > 5:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
+            }
+
+        for diem in diems:
+            diem['requestId'] = request_id
+
+        # Construct the SQL query for bulk insert
+        values = ', '.join([
+            f"('{diem['date']}', '{diem['breakfast']}', '{diem['lunch']}', {diem['dinner']}, '{diem['requestId']}')"
+            for diem in diems
+        ])
+        query = f"INSERT INTO perdiem (diem_date, breakfast, lunch, dinner, request_id) VALUES {values}"
+
+        # Execute the query
+        cursor.execute(query)
+        connection.commit()
+
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Diems Saved Successfully",
+        })
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+# 5. Request Advance Cash on Travel
+@app.route('/request-advcash', methods=['POST'])
+@jwt_required()
+def request_advcash():
+    pass
+
+
+# ------------------------------- Request Status Update -------------------------------
+@app.route('/manager-status', methods=['PATCH'])
+@jwt_required()
+def status_update():
+    pass
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])

@@ -632,7 +632,34 @@ def update_cost_center():
 @app.route('/request-transport', methods=['POST'])
 @jwt_required()
 def request_transportation():
-    pass
+    try:
+        data = request.get_json()
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Data:
+        if "requestId" not in data or "transports" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get('requestId')
+        transports = data.get('transports')
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
 
 
 # 4. Request Hotel on Travel
@@ -738,6 +765,14 @@ def request_perdiem():
         request_id = data.get("requestId")
         diems = data.get("diems")
 
+        if "incident_expense" in data or "international_roaming" in data:
+            international_roaming = data.get("international_roaming")
+            incident_expense = data.get("incident_expense")
+
+            query = f"UPDATE travelrequest SET international_roaming=?, incident_expense WHERE request_id=?"
+            cursor.execute(query, (international_roaming, incident_expense, request_id))
+            connection.commit()
+
         # Validating request_id in travel Request Table:
         query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
         cursor.execute(query, request_id)
@@ -794,6 +829,7 @@ def request_advcash():
 @jwt_required()
 def status_update():
     pass
+
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])

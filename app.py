@@ -101,9 +101,10 @@ def log_reader():
 # LOGIN API
 @app.route('/login', methods=['POST'])
 def login():
-    logger.debug("Endpoint accessed: /login")
+    print("Function Called")
+    # logger.debug("Endpoint accessed: /login")
     try:
-        print(connection)
+        # print(connection)
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -126,8 +127,8 @@ def login():
 
         # Execute the SQL query to check user credentials
         qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
-        cursor.execute(qry, (email, pwd))
-        user_data = cursor.fetchone()
+        # cursor.execute(qry, (email, pwd))
+        user_data = cursor.execute(qry, (email, pwd)).fetchone()
 
         if user_data is None:
             response_data = {
@@ -765,14 +766,6 @@ def request_perdiem():
         request_id = data.get("requestId")
         diems = data.get("diems")
 
-        if "incident_expense" in data or "international_roaming" in data:
-            international_roaming = data.get("international_roaming")
-            incident_expense = data.get("incident_expense")
-
-            query = f"UPDATE travelrequest SET international_roaming=?, incident_expense WHERE request_id=?"
-            cursor.execute(query, (international_roaming, incident_expense, request_id))
-            connection.commit()
-
         # Validating request_id in travel Request Table:
         query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
         cursor.execute(query, request_id)
@@ -782,6 +775,14 @@ def request_perdiem():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Request ID Not Exists!!"
             }
+
+        if "incident_expense" in data or "international_roaming" in data:
+            international_roaming = data.get("international_roaming")
+            incident_expense = data.get("incident_expense")
+
+            query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
+            cursor.execute(query, (international_roaming, incident_expense, request_id))
+            connection.commit()
 
         # Limit of the Diems (Max. 5)
         if len(diems) < 0 or len(diems) > 5:
@@ -821,36 +822,359 @@ def request_perdiem():
 @app.route('/request-advcash', methods=['POST'])
 @jwt_required()
 def request_advcash():
-    pass
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Data:
+        if "requestId" not in data or "cash_in_advance" not in data or "reason_cash_in_advance" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        cash_in_advance = data.get("cash_in_advance")
+        reason_cash_in_advance = data.get("reason_cash_in_advance")
+
+        # Query To Save Advance Cash Request in Travel Request Table
+        query = f"UPDATE travelrequest SET cash_in_advance=?, reason_cash_in_advance=? WHERE request_id=?"
+        cursor.execute(query, (cash_in_advance, reason_cash_in_advance, request_id))
+        connection.commit()
+
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Cash Advance Saved Successfully",
+        })
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
 
 
 # ------------------------------- Request Status Update -------------------------------
-@app.route('/manager-status', methods=['PATCH'])
+
+@app.route('/request-submit', methods=['POST'])
 @jwt_required()
-def status_update():
+def request_submit():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, request_id)
+        result = cursor.fetchone()
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request ID Not Exists!!"
+            }
+        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Request Submitted Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/manager-approve', methods=['POST'])
+@jwt_required()
+def request_approved():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'submitted'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+        print("result: ", result)
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Submitted to get Approve or Reject!!"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        # ...
+
+        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Request Approved Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/expense-admin-approve', methods=['POST'])
+@jwt_required()
+def request_sent_for_payment():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'approved'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+        print("result: ", result)
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Approved by Manager"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        # ...
+
+        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Request Send for Payment Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/finance-approve', methods=['POST'])
+@jwt_required()
+def request_paid():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'send for payment'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+        print("result: ", result)
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Approved from Expense Administrator"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        # ...
+
+        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Request Payment Made Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+# ------------------------------- Dashboard API -------------------------------
+# Total Counts of Travel Requests
+@app.route('/request-count', methods=["GET"])
+@jwt_required()
+def travel_request_count():
+    try:
+        # data = request.get_json()
+        #
+        # if "organization" not in data:
+        #     return {
+        #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+        #         "responseMessage": "(DEBUG) -> Organization is Required",
+        #     }
+
+        # organization = data.get('organization')
+
+        query = """
+                    SELECT
+                        COUNT(*) AS total_requests,
+                        SUM(CASE WHEN status IN ('rejected', 'initiated') THEN 1 ELSE 0 END) AS initiated_or_rejected_requests,
+                        SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END) AS submitted_requests
+                    FROM travelrequest;
+                """
+        cursor.execute(query)
+
+        # Fetch the results
+        result = cursor.fetchone()
+
+        # Store results in variables
+        total_requests = result[0]
+        initiated_or_rejected_requests = result[1]
+        submitted_requests = result[2]
+
+        # Create a response dictionary
+        response = {
+            'responseCode': 200,
+            'data': {
+                'totalRequests': total_requests,
+                'openRequests': initiated_or_rejected_requests,
+                'pendingRequest': submitted_requests
+            }
+        }
+        return response
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+# List of Specific Type of Requests
+@app.route('/request-list')
+@jwt_required()
+def travel_request_list():
     pass
 
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])
 def get_org():
-    print(connection)
-    # Validation for the Connection on DB/Server
-    if not connection:
-        custom_error_response = {
-            "responseMessage": "Database Connection Error",
+    try:
+        print(connection)
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "connection": str(connection),
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            return jsonify(custom_error_response)
+        qry = f"SELECT * FROM organization"
+        # cursor1 = cursor.execute(qry)
+        organization_data = cursor.execute(qry).fetchall()
+        task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
+                      "Company ID": org.company_id, "Company Contact Name": org.company_contact_name} for org in
+                     organization_data]
+        return jsonify(task_list)
+    except Exception as err:
+        return jsonify({
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "reason": "Failed to connect to the database. Please try again later."
-        }
-        return jsonify(custom_error_response)
-    qry = f"SELECT * FROM organization"
-    cursor.execute(qry)
-    organization_data = cursor.fetchall()
-    task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
-                  "Company ID": org.company_id, "Company Contact Name": org.company_contact_name} for org in
-                 organization_data]
-    return jsonify(task_list)
-
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
 
 # ------------------------------- Drop Down API -------------------------------
 # Request Policy Drop Down API

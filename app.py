@@ -3,9 +3,11 @@ import random
 import sys
 import time
 from datetime import timedelta, datetime
+
+import pymysql
 import pyodbc
 from flask_mail import Mail, Message
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, g
 from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
@@ -59,9 +61,9 @@ def establish_db_connection():
         password = 'NPY402OYM5GUHBW2$'
 
         connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
-        connection = pyodbc.connect(connection_string)
-        cursor = connection.cursor()
-        return connection, cursor
+        conn = pyodbc.connect(connection_string)
+        csr = conn.cursor()
+        return conn, csr
     except pyodbc.Error as err:
         error_message = str(err)
         return None, error_message
@@ -102,7 +104,6 @@ def log_reader():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -123,6 +124,8 @@ def login():
             }
             return jsonify(response_data)
 
+        # Begin a Transaction
+        connection.begin()
         # Execute the SQL query to check user credentials
         qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
         # cursor.execute(qry, (email, pwd))
@@ -155,7 +158,7 @@ def login():
         session['userType'] = user_data.user_type
         session['emailId'] = user_data.email_id
         session['employeeId'] = user_data.employee_id
-        employee_name = user_data.employee_first_name+' '+user_data.employee_last_name
+        employee_name = user_data.employee_first_name + ' ' + user_data.employee_last_name
         # Return the tokens to the client
         response_data = {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -179,6 +182,10 @@ def login():
             "responseMessage": "Something Went Wrong",
             "error": str(err)
         })
+    finally:
+        # Close the cursor and connection
+        cursor.close()
+        connection.close()
 
 
 # REFRESH API
@@ -252,7 +259,6 @@ def generate_otp():
 # FORGET PASSWORD API
 @app.route('/forget-password', methods=['POST'])
 def forgot_password():
-    print(connection)
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -1162,7 +1168,6 @@ def get_org():
             }
             return jsonify(custom_error_response)
         qry = f"SELECT * FROM organization"
-        # cursor1 = cursor.execute(qry)
         organization_data = cursor.execute(qry).fetchall()
         task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
                       "Company ID": org.company_id, "Company Contact Name": org.company_contact_name} for org in
@@ -1176,7 +1181,22 @@ def get_org():
         })
 
 
-# Get General/Profile Data
+# Get Request_policy Data:
+@app.route('/get-request-policy', methods=['GET'])
+def get_request_policy():
+    qry = f"SELECT * FROM requestpolicy"
+    request_policy_data = cursor.execute(qry).fetchall()
+    task_list = [{"label": policy.request_policy_name,
+                  "perDiem": bool(policy.perdiem),
+                  "CashAdvance": bool(policy.cashadvance),
+                  "InternationRoaming": bool(policy.international_roaming),
+                  "incidentCharges": bool(policy.incident_charges)}
+                 for policy in request_policy_data]
+
+    return jsonify(task_list)
+
+
+# Get General/Profile Data:
 @app.route('/get-profile', methods=['GET'])
 def get_profile():
     data = request.get_json()

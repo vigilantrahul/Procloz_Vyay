@@ -29,7 +29,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=SESSION_TIMEOUT)
 # ----------------------------- JWT Configuration -----------------------------
 app.config[
     'JWT_SECRET_KEY'] = '\xe3\x94~\x80\xf0\x14\xe1Uu\x07\xef\xa9\t\x9d\xdfZ\xd1\xbcA\xb8\xd4x'  # Need to Change
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=30)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=120)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 app.config['JWT_ALGORITHM'] = 'HS256'  # HMAC with SHA-256
 
@@ -101,10 +101,8 @@ def log_reader():
 # LOGIN API
 @app.route('/login', methods=['POST'])
 def login():
-    print("Function Called")
-    # logger.debug("Endpoint accessed: /login")
     try:
-        # print(connection)
+
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -153,11 +151,11 @@ def login():
         session['organization'] = user_data.organization
         session['accessToken'] = access_token
         session['refreshToken'] = refresh_token
-        session['username'] = user_data.employee_name
+        # session['username'] = user_data.employee_name
         session['userType'] = user_data.user_type
         session['emailId'] = user_data.email_id
         session['employeeId'] = user_data.employee_id
-
+        employee_name = user_data.employee_first_name+' '+user_data.employee_last_name
         # Return the tokens to the client
         response_data = {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -165,7 +163,7 @@ def login():
             "data": {
                 "accessToken": access_token,
                 "refreshToken": refresh_token,
-                "username": user_data.employee_name,
+                "username": employee_name,
                 "emailId": user_data.email_id,
                 "userType": user_data.user_type,
                 "designation": user_data.employee_business_title,
@@ -635,6 +633,7 @@ def update_cost_center():
 def request_transportation():
     try:
         data = request.get_json()
+
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -818,7 +817,7 @@ def request_perdiem():
         })
 
 
-# 5. Request Advance Cash on Travel
+# 6. Request Advance Cash on Travel
 @app.route('/request-advcash', methods=['POST'])
 @jwt_required()
 def request_advcash():
@@ -1176,13 +1175,28 @@ def get_org():
             "reason": str(err)
         })
 
+
+# Get General/Profile Data
+@app.route('/get-profile', methods=['GET'])
+def get_profile():
+    data = request.get_json()
+
+    if "employeeId" not in data or "organization" not in data:
+        return {
+            "responseCode": 400,
+            "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
+        }
+
+    # Validating the organizationId and employeeId
+
+    # Fetching data from the user table:
+    # organization, business_unit, department, function, cost_center, location, employeeId, manager, l2_manager, l3_manager, country, finance admin, expense admin, currency,
+    qry = f"SELECT organization, employee_id, employee_name, employee_business_title, user_type, manager_id, l1_manager_id, l2_manager_id, "
+    user_data = cursor.execute(qry).fetchall()
+
+
 # ------------------------------- Drop Down API -------------------------------
 # Request Policy Drop Down API
-@app.route('/drop-down/cost-center', methods=['GET'])
-def dropdown_cost_center():
-    pass
-
-
 @app.route('/drop-down/request-policy', methods=['GET'])
 def dropdown_request_policy():
     query = "Select request_policy_id, request_policy_data"

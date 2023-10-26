@@ -3,8 +3,6 @@ import random
 import sys
 import time
 from datetime import timedelta, datetime
-
-import pymysql
 import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session, g
@@ -61,9 +59,9 @@ def establish_db_connection():
         password = 'NPY402OYM5GUHBW2$'
 
         connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
-        conn = pyodbc.connect(connection_string)
-        csr = conn.cursor()
-        return conn, csr
+        connection = pyodbc.connect(connection_string)
+        cursor = connection.cursor()
+        return connection, cursor
     except pyodbc.Error as err:
         error_message = str(err)
         return None, error_message
@@ -1184,16 +1182,22 @@ def get_org():
 # Get Request_policy Data:
 @app.route('/get-request-policy', methods=['GET'])
 def get_request_policy():
-    qry = f"SELECT * FROM requestpolicy"
-    request_policy_data = cursor.execute(qry).fetchall()
-    task_list = [{"label": policy.request_policy_name,
-                  "perDiem": bool(policy.perdiem),
-                  "CashAdvance": bool(policy.cashadvance),
-                  "InternationRoaming": bool(policy.international_roaming),
-                  "incidentCharges": bool(policy.incident_charges)}
-                 for policy in request_policy_data]
-
-    return jsonify(task_list)
+    try:
+        qry = f"SELECT * FROM requestpolicy"
+        request_policy_data = cursor.execute(qry).fetchall()
+        task_list = [{"label": policy.request_policy_name,
+                      "perDiem": bool(policy.perdiem),
+                      "CashAdvance": bool(policy.cashadvance),
+                      "InternationRoaming": bool(policy.international_roaming),
+                      "incidentCharges": bool(policy.incident_charges)}
+                     for policy in request_policy_data]
+        return jsonify(task_list)
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
 
 
 # Get General/Profile Data:

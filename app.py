@@ -1180,22 +1180,16 @@ def get_org():
 @jwt_required()
 def get_request_policy():
     try:
-        data = request.get_json()
-        if "organization" not in data:
-            return {
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "(DEBUG) -> Organization is Required"
-            }
+        organization = request.headers.get('organization')
 
-        organization = data.get("organization")
         qry = f"SELECT * FROM requestpolicy where organization=?"
         request_policy_data = cursor.execute(qry, organization).fetchall()
         task_list = [{"label": policy.request_policy_name,
                       "perDiem": bool(policy.perdiem),
                       "CashAdvance": bool(policy.cashadvance),
                       "InternationRoaming": bool(policy.international_roaming),
-                      "incidentCharges": bool(policy.incident_charges)}
-                     for policy in request_policy_data]
+                      "incidentCharges": bool(policy.incident_charges)
+                      }for policy in request_policy_data]
         return jsonify(task_list)
     except Exception as err:
         return jsonify({

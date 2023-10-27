@@ -1155,7 +1155,6 @@ def travel_request_list():
 @app.route('/get-organization', methods=['GET'])
 def get_org():
     try:
-        print(connection)
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -1181,6 +1180,7 @@ def get_org():
 
 # Get Request_policy Data:
 @app.route('/get-request-policy', methods=['GET'])
+@jwt_required()
 def get_request_policy():
     try:
         qry = f"SELECT * FROM requestpolicy"

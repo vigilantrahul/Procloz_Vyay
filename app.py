@@ -1190,7 +1190,8 @@ def get_request_policy():
                       "InternationRoaming": bool(policy.international_roaming),
                       "incidentCharges": bool(policy.incident_charges)
                       }for policy in request_policy_data]
-        return jsonify(task_list)
+        return jsonify({"responseCode": 200, "data": task_list})
+
     except Exception as err:
         return jsonify({
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,

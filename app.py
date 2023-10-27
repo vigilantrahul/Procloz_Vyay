@@ -178,10 +178,10 @@ def login():
             "responseMessage": "Something Went Wrong",
             "error": str(err)
         })
-    finally:
-        # Close the cursor and connection
-        cursor.close()
-        connection.close()
+    # finally:
+    #     # Close the cursor and connection
+    #     cursor.close()
+    #     connection.close()
 
 
 # REFRESH API

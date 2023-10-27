@@ -122,8 +122,6 @@ def login():
             }
             return jsonify(response_data)
 
-        # Begin a Transaction
-        connection.begin()
         # Execute the SQL query to check user credentials
         qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
         # cursor.execute(qry, (email, pwd))
@@ -152,7 +150,6 @@ def login():
         session['organization'] = user_data.organization
         session['accessToken'] = access_token
         session['refreshToken'] = refresh_token
-        # session['username'] = user_data.employee_name
         session['userType'] = user_data.user_type
         session['emailId'] = user_data.email_id
         session['employeeId'] = user_data.employee_id
@@ -1183,6 +1180,8 @@ def get_org():
 @jwt_required()
 def get_request_policy():
     try:
+        data = request.get_json()
+        organization = data.get("organization")
         qry = f"SELECT * FROM requestpolicy"
         request_policy_data = cursor.execute(qry).fetchall()
         task_list = [{"label": policy.request_policy_name,
@@ -1215,7 +1214,7 @@ def get_profile():
 
     # Fetching data from the user table:
     # organization, business_unit, department, function, cost_center, location, employeeId, manager, l2_manager, l3_manager, country, finance admin, expense admin, currency,
-    qry = f"SELECT organization, employee_id, employee_name, employee_business_title, user_type, manager_id, l1_manager_id, l2_manager_id, "
+    qry = f"SELECT organization, employee_id, employee_name, employee_business_title, user_type, manager_id, l1_manager_id, l2_manager_id"
     user_data = cursor.execute(qry).fetchall()
 
 

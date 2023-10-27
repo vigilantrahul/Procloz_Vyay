@@ -2,6 +2,7 @@ import os
 import random
 import sys
 import time
+import json
 from datetime import timedelta, datetime
 import pyodbc
 from flask_mail import Mail, Message
@@ -1206,20 +1207,26 @@ def get_request_policy():
 @app.route('/get-profile', methods=['GET'])
 def get_profile():
     organization = request.headers.get('organization')
-    employee = request.headers.get('organization')
+    employee = request.headers.get('employeeId')
 
-    # if "employeeId" not in  or "organization" not in data:
-    #     return {
-    #         "responseCode": 400,
-    #         "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
-    #     }
+    if organization is None or employee is None:
+        return {
+            "responseCode": 400,
+            "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
+        }
 
     # Validating the organizationId and employeeId
 
     # Fetching data from the user table:
     # organization, business_unit, department, function, cost_center, location, employeeId, manager, l2_manager, l3_manager, country, finance admin, expense admin, currency,
-    qry = f"SELECT organization, employee_id, employee_name, employee_business_title, user_type, manager_id, l1_manager_id, l2_manager_id"
-    user_data = cursor.execute(qry).fetchall()
+    # qry = "SELECT organization, employee_id, employee_first_name, employee_middle_name, employee_last_name from userproc05092023_1"
+    # user_data = cursor.execute(qry).fetchall()
+    # print("user_data: ", user_data)
+    # print("user_data: ", type(user_data))
+
+    return jsonify({
+        "Message": "Done With This"
+    })
 
 
 # ------------------------------- Drop Down API -------------------------------

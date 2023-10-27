@@ -1186,11 +1186,13 @@ def get_request_policy():
         request_policy_data = cursor.execute(qry, organization).fetchall()
         task_list = [{"label": policy.request_policy_name,
                       "perDiem": bool(policy.perdiem),
-                      "CashAdvance": bool(policy.cashadvance),
-                      "InternationRoaming": bool(policy.international_roaming),
+                      "cashAdvance": bool(policy.cashadvance),
+                      "internationRoaming": bool(policy.international_roaming),
                       "incidentCharges": bool(policy.incident_charges)
                       }for policy in request_policy_data]
-        return jsonify({"responseCode": 200, "data": task_list})
+        return jsonify({"responseCode": 200,
+                        "data": task_list,
+                        "responseMessage": "Request Policy Successfully Fetched!!!"})
 
     except Exception as err:
         return jsonify({
@@ -1203,13 +1205,14 @@ def get_request_policy():
 # Get General/Profile Data:
 @app.route('/get-profile', methods=['GET'])
 def get_profile():
-    data = request.get_json()
+    organization = request.headers.get('organization')
+    employee = request.headers.get('organization')
 
-    if "employeeId" not in data or "organization" not in data:
-        return {
-            "responseCode": 400,
-            "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
-        }
+    # if "employeeId" not in  or "organization" not in data:
+    #     return {
+    #         "responseCode": 400,
+    #         "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
+    #     }
 
     # Validating the organizationId and employeeId
 

@@ -28,8 +28,7 @@ app.config['SECRET_KEY'] = 'your_flask_secret_key'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=SESSION_TIMEOUT)
 
 # ----------------------------- JWT Configuration -----------------------------
-app.config[
-    'JWT_SECRET_KEY'] = '\xe3\x94~\x80\xf0\x14\xe1Uu\x07\xef\xa9\t\x9d\xdfZ\xd1\xbcA\xb8\xd4x'  # Need to Change
+app.config['JWT_SECRET_KEY'] = '\xe3\x94~\x80\xf0\x14\xe1Uu\x07\xef\xa9\t\x9d\xdfZ\xd1\xbcA\xb8\xd4x'  # Need to Change
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=120)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 app.config['JWT_ALGORITHM'] = 'HS256'  # HMAC with SHA-256

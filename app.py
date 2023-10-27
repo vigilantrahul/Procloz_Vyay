@@ -1181,9 +1181,15 @@ def get_org():
 def get_request_policy():
     try:
         data = request.get_json()
+        if "organization" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> Organization is Required"
+            }
+
         organization = data.get("organization")
-        qry = f"SELECT * FROM requestpolicy"
-        request_policy_data = cursor.execute(qry).fetchall()
+        qry = f"SELECT * FROM requestpolicy where organization=?"
+        request_policy_data = cursor.execute(qry, organization).fetchall()
         task_list = [{"label": policy.request_policy_name,
                       "perDiem": bool(policy.perdiem),
                       "CashAdvance": bool(policy.cashadvance),

@@ -1263,7 +1263,7 @@ def get_profile():
                   'employee_middle_name': user.employee_middle_name,
                   'employee_last_name': user.employee_last_name,
                   'employee_business_title': user.employee_business_title,
-                  'costcenter': user.costcenter,
+                  'cost_center': user.costcenter,
                   'employee_country_name': user.employee_country_name,
                   'employee_currency_code': user.employee_currency_code,
                   'employee_currency_name': user.employee_currency_name,

@@ -177,10 +177,6 @@ def login():
             "responseMessage": "Something Went Wrong",
             "error": str(err)
         })
-    # finally:
-    #     # Close the cursor and connection
-    #     cursor.close()
-    #     connection.close()
 
 
 # REFRESH API
@@ -1208,6 +1204,8 @@ def get_profile():
     organization = request.headers.get('organization')
     employee = request.headers.get('employeeId')
 
+    print("connection: ", connection)
+
     if organization is None or employee is None:
         return {
             "responseCode": 400,
@@ -1216,15 +1214,76 @@ def get_profile():
 
     # Validating the organizationId and employeeId
 
-    # Fetching data from the user table:
-    # organization, business_unit, department, function, cost_center, location, employeeId, manager, l2_manager, l3_manager, country, finance admin, expense admin, currency,
-    # qry = "SELECT organization, employee_id, employee_first_name, employee_middle_name, employee_last_name from userproc05092023_1"
-    # user_data = cursor.execute(qry).fetchall()
-    # print("user_data: ", user_data)
-    # print("user_data: ", type(user_data))
+    qry = """
+            SELECT 
+            u.employee_id,
+            u.employee_first_name,
+            u.employee_middle_name,
+            u.employee_last_name,
+            u.employee_business_title,
+            u.costcenter,
+            u.employee_country_name,
+            u.employee_currency_code,
+            u.employee_currency_name,
+            u.manager_id,
+            u.l1_manager_id,
+            u.l2_manager_id,
+            org.expense_administrator,
+            org.finance_contact_person,
+            org.company_name AS organization,
+            bu.business_unit_name AS business_unit,
+            d.department AS department,
+            f.function_name AS func
+        FROM 
+            userproc05092023_1 u
+        LEFT JOIN 
+            organization org ON u.organization = org.company_id
+        LEFT JOIN 
+            businessunit bu ON u.business_unit = bu.business_unit_id
+        LEFT JOIN 
+            departments d ON bu.business_unit_id = d.business_unit
+        LEFT JOIN 
+            functions f ON d.department = f.department
+        WHERE 
+            u.employee_id = ?;
+    """
+    try:
+        qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
+        user_data = cursor.execute(qry_1, employee).fetchall()
+        print("UserData: ", user_data)
+    except Exception as err_1:
+        return {
+            "error": str(err_1),
+            "responseCode": 500,
+            "responseMessage": "Error is Occurring"
+        }
+
+    task_list = [{'employee_id': user.employee_id,
+                  'employee_first_name': user.employee_first_name,
+                  'employee_middle_name': user.employee_middle_name,
+                  'employee_last_name': user.employee_last_name,
+                  'employee_business_title': user.employee_business_title,
+                  'costcenter': user.costcenter,
+                  'employee_country_name': user.employee_country_name,
+                  'employee_currency_code': user.employee_currency_code,
+                  'employee_currency_name': user.employee_currency_name,
+                  'manager_id': user.manager_id,
+                  'l1_manager_id': user.l1_manager_id,
+                  'l2_manager_id': user.l2_manager_id,
+                  'expense_administrator': user.expense_administrator,
+                  'finance_contact_person': user.finance_contact_person,
+                  'company_name': user.organization,
+                  'business_unit': user.business_unit,
+                  'department': user.department,
+                  'function': user.func}
+                 for user in user_data]
+
+    print("task_list: ", task_list)
 
     return jsonify({
-        "Message": "Done With This"
+        "responseCode": 200,
+        "responseMessage": "Success",
+        "data": task_list
     })
 
 

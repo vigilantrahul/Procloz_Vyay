@@ -1177,6 +1177,11 @@ def get_org():
 def get_request_policy():
     try:
         organization = request.headers.get('organization')
+        if organization is None:
+            return {
+                "responseMessage": "(DEBUG) -> Organization is Required Field",
+                "responseCode": 400
+            }
 
         qry = f"SELECT * FROM requestpolicy where organization=?"
         request_policy_data = cursor.execute(qry, organization).fetchall()
@@ -1185,7 +1190,7 @@ def get_request_policy():
                       "cashAdvance": bool(policy.cashadvance),
                       "internationRoaming": bool(policy.international_roaming),
                       "incidentCharges": bool(policy.incident_charges)
-                      }for policy in request_policy_data]
+                      } for policy in request_policy_data]
         return jsonify({"responseCode": 200,
                         "data": task_list,
                         "responseMessage": "Request Policy Successfully Fetched!!!"})
@@ -1250,7 +1255,7 @@ def get_profile():
     try:
         qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
         user_data = cursor.execute(qry_1, employee).fetchall()
-        print("UserData: ", user_data)
+
     except Exception as err_1:
         return {
             "error": str(err_1),
@@ -1277,14 +1282,18 @@ def get_profile():
                   'department': user.department,
                   'function': user.func}
                  for user in user_data]
-
-    print("task_list: ", task_list)
-
+    if len(task_list) == 1:
+        task_list = task_list[0]
+    else:
+        task_list = None
     return jsonify({
         "responseCode": 200,
         "responseMessage": "Success",
         "data": task_list
     })
+
+
+# ------------------------------- Travel Request Data Fetch API -------------------------------
 
 
 # ------------------------------- Drop Down API -------------------------------

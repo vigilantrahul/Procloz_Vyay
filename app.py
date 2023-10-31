@@ -644,8 +644,11 @@ def update_cost_center():
                           'department': user.department,
                           'function': user.func}
                          for user in user_data]
+
             if len(task_list) == 1:
                 task_list = task_list[0]
+                if cost_center is not None:
+                    task_list["cost_center"] = cost_center
             else:
                 task_list = None
             return jsonify({

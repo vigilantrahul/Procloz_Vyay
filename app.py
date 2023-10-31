@@ -1343,7 +1343,7 @@ def travel_request_count():
 def total_travel_request():
     try:
         employeeId = request.headers.get('employeeId')
-        query = "SELECT * FROM travelrequest WHERE employee_id=?"
+        query = "SELECT * FROM travelrequest WHERE user_id=?"
         result = cursor.execute(query, (employeeId, )).fetchall()
         total_travel_request_list = [
             {
@@ -1383,7 +1383,7 @@ def pending_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status=submitted and employee_id=?"
+            query = "SELECT * FROM travelrequest WHERE status=submitted and user_id=?"
             total_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             task_list = [
                 {
@@ -1419,7 +1419,7 @@ def open_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status=initiated or status=rejected and employee_id=?"
+            query = "SELECT * FROM travelrequest WHERE status=initiated or status=rejected and user_id=?"
             total_travel_request_data = cursor.execute(query, (employeeId, )).fetchall()
             task_list = [
                 {

@@ -1341,14 +1341,37 @@ def travel_request_count():
 @app.route('/total-travel-request', methods=['GET'])
 @jwt_required()
 def total_travel_request():
-    employeeId = request.headers.get('employeeId')
-    query = "SELECT * FROM travelrequest WHERE employee_id=?"
+    try:
+        employeeId = request.headers.get('employeeId')
+        query = "SELECT * FROM travelrequest WHERE employee_id=?"
+        result = cursor.execute(query, (employeeId, )).fetchall()
+        total_travel_request_list = [
+            {
+                "requestId": req.request_id,
+                "requestName": req.request_name,
+                "requestPolicy": req.request_policy,
+                "startDate": req.company_contact_name
+            }
+            for req in result
+        ]
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Total Travel Request List",
+            "data": total_travel_request_list
+        }
+    except Exception as err:
+        return {
+            "error": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
+        }
 
 
-# Open Request of specific Employee:
-@app.route('/open-travel-request', methods=['GET'])
+# Pending Request of specific Employee:
+@app.route('/pending-travel-request', methods=['GET'])
 @jwt_required()
-def total_travel_request():
+def pending_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
@@ -1364,12 +1387,12 @@ def total_travel_request():
             total_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             task_list = [
                 {
-                    'Company Name': org.company_name,
-                    'Company Onboard Date': org.company_onboard_date,
-                    "Company ID": org.company_id,
-                    "Company Contact Name": org.company_contact_name
+                    "requestId": req.request_id,
+                    "requestName": req.request_name,
+                    "requestPolicy": req.request_policy,
+                    "startDate": req.company_contact_name
                 }
-                for org in total_travel_request_data
+                for req in total_travel_request_data
             ]
             return jsonify(task_list)
         except Exception as err:
@@ -1380,10 +1403,10 @@ def total_travel_request():
             }
 
 
-# Pending Request of specific Employee:
-@app.route('/pending-travel-request', methods=['GET'])
+# Open Request of specific Employee:
+@app.route('/open-travel-request', methods=['GET'])
 @jwt_required()
-def total_travel_request():
+def pending_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
@@ -1396,7 +1419,7 @@ def total_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status=submitted and employee_id=?"
+            query = "SELECT * FROM travelrequest WHERE status=initiated or status=rejected and employee_id=?"
             total_travel_request_data = cursor.execute(query, (employeeId, )).fetchall()
             task_list = [
                 {

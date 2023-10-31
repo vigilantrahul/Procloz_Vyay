@@ -103,14 +103,14 @@ def log_reader():
 def login():
     try:
         # Validation for the Connection on DB/Server
-        if not connection:
-            custom_error_response = {
-                "responseMessage": "Database Connection Error",
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "reason": "Failed to connect to the database. Please try again later."
-            }
-            # Return the custom error response with a 500 status code
-            return jsonify(custom_error_response)
+        # if not connection:
+        #     custom_error_response = {
+        #         "responseMessage": "Database Connection Error",
+        #         "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+        #         "reason": "Failed to connect to the database. Please try again later."
+        #     }
+        #     # Return the custom error response with a 500 status code
+        #     return jsonify(custom_error_response)
 
         email = request.json.get('email', '')
         pwd = request.json.get('password', '')

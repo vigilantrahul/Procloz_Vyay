@@ -1406,7 +1406,7 @@ def pending_travel_request():
 # Open Request of specific Employee:
 @app.route('/open-travel-request', methods=['GET'])
 @jwt_required()
-def pending_travel_request():
+def open_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),

@@ -711,7 +711,7 @@ def update_cost_center():
 def request_transportation():
     try:
         data = request.get_json()
-        print("connection: ", connection)
+
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -744,21 +744,59 @@ def request_transportation():
             }
 
         for trans in transports:
-            print("trans: ", trans)
+            if 'trips' in trans and 'tripWay' in trans:
+                trips = trans['trips']
+                trip_type = trans['tripWay']
+            else:
+                # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
+                trips = None
+                trip_type = None
+
             transport_type = trans['transportType']
-            trip_type = trans['tripWay']
 
             # Get the ID of the inserted row
             sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
             cursor.execute(sql_query, (request_Id, transport_type, trip_type))
+            connection.commit()
 
             # Get the ID of the inserted row
-            cursor.execute("SELECT id from transport Where request_id=? and transport_type=? and trip_type=?")
+            cursor.execute("select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id='IRYS271023154132' and trqst.user_id='PC04' order by tprt.id DESC")
             row_id = cursor.fetchone()
+            transport_id = row_id[0]
 
-            connection.commit()
-            print("trans: ", trans)
-            print("New ID: ", row_id)
+            print("Transport ID: ", transport_id)
+            # Condition for Taxi
+            if transport_type == "taxi":
+                comment = trans["comment"]
+                estimate_cost = trans["estimateCost"]
+
+                query = f"INSERT INTO transporttripmapping (comment, estimated_cost, transport) VALUES (?, ?, ?)"
+                cursor.execute(query, (comment, estimate_cost, transport_id))
+                connection.commit()
+
+            # Condition for Car Rental
+            if transport_type == "carrental":
+                comment = trans["comment"]
+                from_date = trans["startDate"]
+                to_date = trans["endDate"]
+                estimate_cost = trans["estimateCost"]
+                query = f"INSERT INTO transporttripmapping (comment, estimated_cost, from_date, to_date, transport) VALUES (?, ?, ?, ?, ?)"
+                cursor.execute(query, (comment, estimate_cost, from_date, to_date, transport_id))
+                connection.commit()
+
+            # Condition for Trips
+            if trips is not None:
+                for trip in trips:
+                    trip['transport'] = transport_id
+
+                # Construct the SQL query for bulk insert
+                values = ', '.join([
+                    f"('{trip['from']}', '{trip['to']}', '{trip['departureDate']}', {trip['estimatedCost']}, '{trip['transport']}')"
+                    for trip in trips
+                ])
+                query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
+                cursor.execute(query)
+                connection.commit()
 
         # print("Transport(after adding requestId): ", transports)
         return jsonify({
@@ -1480,12 +1518,22 @@ def get_request_policy():
 
         qry = f"SELECT * FROM requestpolicy where organization=?"
         request_policy_data = cursor.execute(qry, organization).fetchall()
-        task_list = [{"label": policy.request_policy_name,
-                      "perDiem": bool(policy.perdiem),
-                      "cashAdvance": bool(policy.cashadvance),
-                      "internationRoaming": bool(policy.international_roaming),
-                      "incidentCharges": bool(policy.incident_charges)
-                      } for policy in request_policy_data]
+        # task_list = [{"label": policy.request_policy_name,
+        #               "perDiem": bool(policy.perdiem),
+        #               "cashAdvance": bool(policy.cashadvance),
+        #               "internationRoaming": bool(policy.international_roaming),
+        #               "incidentCharges": bool(policy.incident_charges)
+        #               } for policy in request_policy_data]
+
+        task_list = [{
+            "label": policy.request_policy_name,
+            "perDiem": bool(policy.perdiem),
+            "cashAdvance": bool(policy.cashadvance),
+            "internationRoaming": bool(policy.international_roaming),
+            "incidentCharges": bool(policy.incident_charges),
+            "otherExpense": False if not policy.international_roaming and not policy.incident_charges else True
+        } for policy in request_policy_data]
+
         return jsonify({"responseCode": 200,
                         "data": task_list,
                         "responseMessage": "Request Policy Successfully Fetched!!!"})

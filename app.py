@@ -1381,14 +1381,14 @@ def travel_request_count():
 def total_travel_request():
     try:
         employeeId = request.headers.get('employeeId')
-        query = "SELECT * FROM travelrequest WHERE employee_id=?"
+        query = "SELECT * FROM travelrequest WHERE user_id=?"
         result = cursor.execute(query, (employeeId, )).fetchall()
         total_travel_request_list = [
             {
                 "requestId": req.request_id,
                 "requestName": req.request_name,
                 "requestPolicy": req.request_policy,
-                "startDate": req.company_contact_name
+                "startDate": req.start_date
             }
             for req in result
         ]
@@ -1421,18 +1421,22 @@ def pending_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status=submitted and employee_id=?"
-            total_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
-            task_list = [
+            query = "SELECT * FROM travelrequest WHERE status='submitted' and user_id=?"
+            pending_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
+            pending_travel_request_list = [
                 {
                     "requestId": req.request_id,
                     "requestName": req.request_name,
                     "requestPolicy": req.request_policy,
-                    "startDate": req.company_contact_name
+                    "startDate": req.start_date
                 }
-                for req in total_travel_request_data
+                for req in pending_travel_request_data
             ]
-            return jsonify(task_list)
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Total Travel Request List",
+                "data": pending_travel_request_list
+            }
         except Exception as err:
             return {
                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1457,18 +1461,22 @@ def open_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status=initiated or status=rejected and employee_id=?"
-            total_travel_request_data = cursor.execute(query, (employeeId, )).fetchall()
-            task_list = [
+            query = "SELECT * FROM travelrequest WHERE status='initiated' or status='rejected' and user_id=?"
+            open_travel_request_data = cursor.execute(query, (employeeId, )).fetchall()
+            open_travel_request_list = [
                 {
                     "requestId": req.request_id,
                     "requestName": req.request_name,
                     "requestPolicy": req.request_policy,
-                    "startDate": req.company_contact_name
+                    "startDate": req.start_date
                 }
-                for req in total_travel_request_data
+                for req in open_travel_request_data
             ]
-            return jsonify(task_list)
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Total Travel Request List",
+                "data": open_travel_request_list
+            }
         except Exception as err:
             return {
                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,

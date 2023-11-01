@@ -1434,7 +1434,7 @@ def pending_travel_request():
             ]
             return {
                 "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Total Travel Request List",
+                "responseMessage": "Pending Travel Request List",
                 "data": pending_travel_request_list
             }
         except Exception as err:
@@ -1474,7 +1474,7 @@ def open_travel_request():
             ]
             return {
                 "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Total Travel Request List",
+                "responseMessage": "Open Travel Request List",
                 "data": open_travel_request_list
             }
         except Exception as err:

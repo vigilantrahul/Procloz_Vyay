@@ -791,7 +791,7 @@ def request_transportation():
 
                 # Construct the SQL query for bulk insert
                 values = ', '.join([
-                    f"('{trip['from']}', '{trip['to']}', '{trip['date']}', {trip['estimatedCost']}, '{trip['transport']}')"
+                    f"('{trip['from']}', '{trip['to']}', '{trip['date']}', {trip['estimateCost']}, '{trip['transport']}')"
                     for trip in trips
                 ])
                 query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"

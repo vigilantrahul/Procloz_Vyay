@@ -791,7 +791,7 @@ def request_transportation():
 
                 # Construct the SQL query for bulk insert
                 values = ', '.join([
-                    f"('{trip['from']}', '{trip['to']}', '{trip['departureDate']}', {trip['estimatedCost']}, '{trip['transport']}')"
+                    f"('{trip['from']}', '{trip['to']}', '{trip['date']}', {trip['estimatedCost']}, '{trip['transport']}')"
                     for trip in trips
                 ])
                 query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
@@ -974,14 +974,6 @@ def request_perdiem():
                     "responseMessage": "Request ID Not Exists!!"
                 }
 
-            if "incident_expense" in data or "international_roaming" in data:
-                international_roaming = data.get("international_roaming")
-                incident_expense = data.get("incident_expense")
-
-                query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
-                cursor.execute(query, (international_roaming, incident_expense, request_id))
-                connection.commit()
-
             # Limit of the Diems (Max. 5)
             if len(diems) < 0 or len(diems) > 5:
                 return {
@@ -1096,6 +1088,36 @@ def request_advcash():
                 "responseMessage": "Something Went Wrong",
                 "reason": str(err)
             })
+
+
+# 7. Other Expense
+@app.route('/other-expense', methods=['GET', 'POST'])
+@jwt_required()
+def other_expense():
+    try:
+        data = request.get_json()
+        if "requestPolicy" not in data or "requestId" not in data:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
+            })
+
+        # Validation of the international expense and internation roaming
+
+        request_id = data.get("requestId")
+        if "incident_expense" in data or "international_roaming" in data:
+            international_roaming = data.get("international_roaming")
+            incident_expense = data.get("incident_expense")
+
+            query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
+            cursor.execute(query, (international_roaming, incident_expense, request_id))
+            connection.commit()
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
 
 
 # ------------------------------- Request Status Update -------------------------------

@@ -661,16 +661,17 @@ def update_cost_center():
                           'department': user.department,
                           'function': user.func}
                          for user in user_data]
-            # print("task_list(before adding cost center from request Table): ", task_list)
-
             if len(task_list) == 1:
                 task_list = task_list[0]
-                if cost_center is not None:
+                print("task_list: ", task_list)
+                print("Cost_Center: ", cost_center)
+                if cost_center[0] is not None:
+                    print("cost center is not None")
                     task_list["cost_center"] = cost_center[0]
             else:
                 task_list = None
 
-            # print("Task List if any change: ", task_list)
+            print("Task List if any change: ", task_list)
             return jsonify({
                 "responseCode": 200,
                 "responseMessage": "Success",
@@ -1145,8 +1146,10 @@ def other_expense():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+
     if request.method == "GET":
         pass
+
     if request.method == "POST":
         try:
             data = request.get_json()
@@ -1156,7 +1159,7 @@ def other_expense():
                     "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
                 })
 
-            # Validation of the international expense and internation roaming
+            # Validation of the international expense and internation roaming as per the requestPolicy
 
             request_id = data.get("requestId")
             if "incident_expense" in data or "international_roaming" in data:
@@ -1636,8 +1639,6 @@ def get_profile():
     organization = request.headers.get('organization')
     employee = request.headers.get('employeeId')
 
-    print("connection: ", connection)
-
     if organization is None or employee is None:
         return {
             "responseCode": 400,
@@ -1645,40 +1646,6 @@ def get_profile():
         }
 
     # Validating the organizationId and employeeId
-
-    qry = """
-            SELECT 
-            u.employee_id,
-            u.employee_first_name,
-            u.employee_middle_name,
-            u.employee_last_name,
-            u.employee_business_title,
-            u.costcenter,
-            u.employee_country_name,
-            u.employee_currency_code,
-            u.employee_currency_name,
-            u.manager_id,
-            u.l1_manager_id,
-            u.l2_manager_id,
-            org.expense_administrator,
-            org.finance_contact_person,
-            org.company_name AS organization,
-            bu.business_unit_name AS business_unit,
-            d.department AS department,
-            f.function_name AS func
-        FROM 
-            userproc05092023_1 u
-        LEFT JOIN 
-            organization org ON u.organization = org.company_id
-        LEFT JOIN 
-            businessunit bu ON u.business_unit = bu.business_unit_id
-        LEFT JOIN 
-            departments d ON bu.business_unit_id = d.business_unit
-        LEFT JOIN 
-            functions f ON d.department = f.department
-        WHERE 
-            u.employee_id = ?;
-    """
     try:
         qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
         user_data = cursor.execute(qry_1, employee).fetchall()

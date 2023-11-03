@@ -566,12 +566,19 @@ def request_initiate():
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
             cursor.execute(query, request_id)
             result = cursor.fetchone()
+
+            # Code for the Updating Request Data on that particular request id
             if result is not None:
+                sql_query = "UPDATE travelrequest SET organization = ?, user_id = ?, request_name = ?, request_policy = ?, start_date = ?, end_date = ?, purpose = ?, status = ? WHERE request_id = ?"
+                cursor.execute(sql_query, organization, employee_id, request_name, request_policy, start_date, end_date, purpose, status, request_id)
+                connection.commit()
+
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Request ID Already Exists!!"
+                    "responseMessage": "Request Data Updated Successfully!!"
                 }
 
+            # Query To Insert Data in the Request Table:
             sql_query = "INSERT INTO travelrequest (organization, user_id, request_id, request_name, request_policy, start_date, end_date, purpose, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date,
                            end_date, purpose, status)
@@ -760,7 +767,8 @@ def request_transportation():
             connection.commit()
 
             # Get the ID of the inserted row
-            cursor.execute("select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id='IRYS271023154132' and trqst.user_id='PC04' order by tprt.id DESC")
+            cursor.execute(
+                "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id='IRYS271023154132' and trqst.user_id='PC04' order by tprt.id DESC")
             row_id = cursor.fetchone()
             transport_id = row_id[0]
 
@@ -1404,7 +1412,7 @@ def total_travel_request():
     try:
         employeeId = request.headers.get('employeeId')
         query = "SELECT * FROM travelrequest WHERE user_id=?"
-        result = cursor.execute(query, (employeeId, )).fetchall()
+        result = cursor.execute(query, (employeeId,)).fetchall()
         total_travel_request_list = [
             {
                 "requestId": req.request_id,
@@ -1484,7 +1492,7 @@ def open_travel_request():
         try:
             employeeId = request.headers.get('employeeId')
             query = "SELECT * FROM travelrequest WHERE status='initiated' or status='rejected' and user_id=?"
-            open_travel_request_data = cursor.execute(query, (employeeId, )).fetchall()
+            open_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             open_travel_request_list = [
                 {
                     "requestId": req.request_id,

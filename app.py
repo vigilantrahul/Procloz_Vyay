@@ -888,6 +888,11 @@ def request_hotel():
             for hotel in hotels:
                 hotel['requestId'] = request_id
 
+            # Code to Delete the previous Data related to that request ID:
+            sql_query = "DELETE FROM perdiem WHERE request_id = ?"
+            cursor.execute(sql_query, (request_id,))
+            connection.commit()
+
             # Construct the SQL query for bulk insert
             values = ', '.join([
                 f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['requestId']}')"
@@ -991,6 +996,11 @@ def request_perdiem():
 
             for diem in diems:
                 diem['requestId'] = request_id
+
+            # Code to Delete the previous Data related to that request ID:
+            sql_query = "DELETE FROM perdiem WHERE request_id = ?"
+            cursor.execute(sql_query, (request_id,))
+            connection.commit()
 
             # Construct the SQL query for bulk insert
             values = ', '.join([

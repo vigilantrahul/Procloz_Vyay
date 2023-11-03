@@ -629,9 +629,11 @@ def update_cost_center():
             try:
                 qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
                 user_data = cursor.execute(qry_1, employee).fetchall()
+                # print("User_data: ", user_data)
 
                 qry_2 = "SELECT cost_center FROM travelrequest WHERE request_id=?"
                 cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
+                # print("Cost Center: ", cost_center)
 
             except Exception as err_1:
                 return {
@@ -659,13 +661,16 @@ def update_cost_center():
                           'department': user.department,
                           'function': user.func}
                          for user in user_data]
+            # print("task_list(before adding cost center from request Table): ", task_list)
 
             if len(task_list) == 1:
                 task_list = task_list[0]
                 if cost_center is not None:
-                    task_list["cost_center"] = cost_center
+                    task_list["cost_center"] = cost_center[0]
             else:
                 task_list = None
+
+            # print("Task List if any change: ", task_list)
             return jsonify({
                 "responseCode": 200,
                 "responseMessage": "Success",

@@ -505,9 +505,17 @@ def request_initiate():
                     "responseMessage": "Request ID Not Exists!!"
                 }
             else:
-                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose',
-                                'status']
+                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose', 'status']
                 response_data = dict(zip(column_names, result))
+                response_data = {
+                    "requestId": response_data["request_id"],
+                    "requestName": response_data["request_name"],
+                    "requestPolicy": response_data["request_policy"],
+                    "startDate": response_data["start_date"],
+                    "endDate": response_data["end_date"],
+                    "purpose": response_data["purpose"],
+                    "status": response_data["status"]
+                }
                 return {
                     "responseCode": http_status_codes.HTTP_200_OK,
                     "responseData": response_data,
@@ -716,108 +724,119 @@ def update_cost_center():
 @app.route('/request-transport', methods=['POST'])
 # @jwt_required()
 def request_transportation():
-    try:
-        data = request.get_json()
 
-        # Validation for the Connection on DB/Server
-        if not connection:
-            custom_error_response = {
-                "responseMessage": "Database Connection Error",
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "reason": "Failed to connect to the database. Please try again later."
-            }
-            # Return the custom error response with a 500 status code
-            return jsonify(custom_error_response)
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
 
-        # Validation of Data:
-        if "requestId" not in data or "transports" not in data:
-            return {
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            pass
+        except Exception as err:
+            return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Required Fields are Empty"
-            }
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
-        request_Id = data.get('requestId')
-        transports = data.get('transports')
+    if request.method == "POST":
+        try:
+            data = request.get_json()
 
-        # Validating the Request_ID already exist or not:
-        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-        cursor.execute(query, request_Id)
-        result = cursor.fetchone()
+            # Validation of Data:
+            if "requestId" not in data or "transports" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
 
-        if result is None:
-            return {
+            request_Id = data.get('requestId')
+            transports = data.get('transports')
+
+            # Validating the Request_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_Id)
+            result = cursor.fetchone()
+
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            for trans in transports:
+                if 'trips' in trans and 'tripWay' in trans:
+                    trips = trans['trips']
+                    trip_type = trans['tripWay']
+                else:
+                    # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
+                    trips = None
+                    trip_type = None
+
+                transport_type = trans['transportType']
+
+                # Get the ID of the inserted row
+                sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
+                cursor.execute(sql_query, (request_Id, transport_type, trip_type))
+                connection.commit()
+
+                # Get the ID of the inserted row
+                cursor.execute(
+                    "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id='IRYS271023154132' and trqst.user_id='PC04' order by tprt.id DESC")
+                row_id = cursor.fetchone()
+                transport_id = row_id[0]
+
+                # Condition for Taxi
+                if transport_type == "taxi":
+                    comment = trans["comment"]
+                    estimate_cost = trans["estimateCost"]
+
+                    query = f"INSERT INTO transporttripmapping (comment, estimated_cost, transport) VALUES (?, ?, ?)"
+                    cursor.execute(query, (comment, estimate_cost, transport_id))
+                    connection.commit()
+
+                # Condition for Car Rental
+                if transport_type == "carrental":
+                    comment = trans["comment"]
+                    from_date = trans["startDate"]
+                    to_date = trans["endDate"]
+                    estimate_cost = trans["estimateCost"]
+                    query = f"INSERT INTO transporttripmapping (comment, estimated_cost, from_date, to_date, transport) VALUES (?, ?, ?, ?, ?)"
+                    cursor.execute(query, (comment, estimate_cost, from_date, to_date, transport_id))
+                    connection.commit()
+
+                # Condition for Trips
+                if trips is not None:
+                    for trip in trips:
+                        trip['transport'] = transport_id
+
+                    # Construct the SQL query for bulk insert
+                    values = ', '.join([
+                        f"('{trip['from']}', '{trip['to']}', '{trip['date']}', {trip['estimateCost']}, '{trip['transport']}')"
+                        for trip in trips
+                    ])
+                    query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
+                    cursor.execute(query)
+                    connection.commit()
+
+            # print("Transport(after adding requestId): ", transports)
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Hey All Good"
+            })
+        except Exception as err:
+            return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Request ID Not Exists!!"
-            }
-
-        for trans in transports:
-            if 'trips' in trans and 'tripWay' in trans:
-                trips = trans['trips']
-                trip_type = trans['tripWay']
-            else:
-                # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
-                trips = None
-                trip_type = None
-
-            transport_type = trans['transportType']
-
-            # Get the ID of the inserted row
-            sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
-            cursor.execute(sql_query, (request_Id, transport_type, trip_type))
-            connection.commit()
-
-            # Get the ID of the inserted row
-            cursor.execute(
-                "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id='IRYS271023154132' and trqst.user_id='PC04' order by tprt.id DESC")
-            row_id = cursor.fetchone()
-            transport_id = row_id[0]
-
-            print("Transport ID: ", transport_id)
-            # Condition for Taxi
-            if transport_type == "taxi":
-                comment = trans["comment"]
-                estimate_cost = trans["estimateCost"]
-
-                query = f"INSERT INTO transporttripmapping (comment, estimated_cost, transport) VALUES (?, ?, ?)"
-                cursor.execute(query, (comment, estimate_cost, transport_id))
-                connection.commit()
-
-            # Condition for Car Rental
-            if transport_type == "carrental":
-                comment = trans["comment"]
-                from_date = trans["startDate"]
-                to_date = trans["endDate"]
-                estimate_cost = trans["estimateCost"]
-                query = f"INSERT INTO transporttripmapping (comment, estimated_cost, from_date, to_date, transport) VALUES (?, ?, ?, ?, ?)"
-                cursor.execute(query, (comment, estimate_cost, from_date, to_date, transport_id))
-                connection.commit()
-
-            # Condition for Trips
-            if trips is not None:
-                for trip in trips:
-                    trip['transport'] = transport_id
-
-                # Construct the SQL query for bulk insert
-                values = ', '.join([
-                    f"('{trip['from']}', '{trip['to']}', '{trip['date']}', {trip['estimateCost']}, '{trip['transport']}')"
-                    for trip in trips
-                ])
-                query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
-                cursor.execute(query)
-                connection.commit()
-
-        # print("Transport(after adding requestId): ", transports)
-        return jsonify({
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Hey All Good"
-        })
-
-    except Exception as err:
-        return jsonify({
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-            "responseMessage": "Something Went Wrong",
-            "reason": str(err)
-        })
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
 
 # 4. Request Hotel on Travel
@@ -1038,6 +1057,7 @@ def request_advcash():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")
@@ -1112,30 +1132,41 @@ def request_advcash():
 @app.route('/other-expense', methods=['GET', 'POST'])
 @jwt_required()
 def other_expense():
-    try:
-        data = request.get_json()
-        if "requestPolicy" not in data or "requestId" not in data:
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+    if request.method == "GET":
+        pass
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            if "requestPolicy" not in data or "requestId" not in data:
+                return jsonify({
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
+                })
+
+            # Validation of the international expense and internation roaming
+
+            request_id = data.get("requestId")
+            if "incident_expense" in data or "international_roaming" in data:
+                international_roaming = data.get("international_roaming")
+                incident_expense = data.get("incident_expense")
+
+                query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
+                cursor.execute(query, (international_roaming, incident_expense, request_id))
+                connection.commit()
+        except Exception as err:
             return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
             })
-
-        # Validation of the international expense and internation roaming
-
-        request_id = data.get("requestId")
-        if "incident_expense" in data or "international_roaming" in data:
-            international_roaming = data.get("international_roaming")
-            incident_expense = data.get("incident_expense")
-
-            query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
-            cursor.execute(query, (international_roaming, incident_expense, request_id))
-            connection.commit()
-    except Exception as err:
-        return jsonify({
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-            "responseMessage": "Something Went Wrong",
-            "reason": str(err)
-        })
 
 
 # ------------------------------- Request Status Update -------------------------------

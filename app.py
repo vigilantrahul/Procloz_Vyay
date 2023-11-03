@@ -889,7 +889,7 @@ def request_hotel():
                 hotel['requestId'] = request_id
 
             # Code to Delete the previous Data related to that request ID:
-            sql_query = "DELETE FROM perdiem WHERE request_id = ?"
+            sql_query = "DELETE FROM hotel WHERE request_id = ?"
             cursor.execute(sql_query, (request_id,))
             connection.commit()
 

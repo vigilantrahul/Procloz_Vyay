@@ -574,7 +574,7 @@ def request_initiate():
                 connection.commit()
 
                 return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseCode": http_status_codes.HTTP_200_OK,
                     "responseMessage": "Request Data Updated Successfully!!"
                 }
 

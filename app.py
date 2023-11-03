@@ -663,10 +663,7 @@ def update_cost_center():
                          for user in user_data]
             if len(task_list) == 1:
                 task_list = task_list[0]
-                print("task_list: ", task_list)
-                print("Cost_Center: ", cost_center)
                 if cost_center[0] is not None:
-                    print("cost center is not None")
                     task_list["cost_center"] = cost_center[0]
             else:
                 task_list = None

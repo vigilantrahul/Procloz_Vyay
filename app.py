@@ -1461,24 +1461,24 @@ def total_travel_request():
         result = cursor.execute(query, (employeeId,)).fetchall()
         total_travel_request_list = [
             {
-                "requestId": req.request_id,
-                "requestName": req.request_name,
-                "requestPolicy": req.request_policy,
-                "startDate": req.start_date
+                "request_id": req.request_id,
+                "request_name": req.request_name,
+                "request_policy": req.request_policy,
+                "start_date": req.start_date
             }
             for req in result
         ]
 
         return {
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Total Travel Request List",
+            "response_code": http_status_codes.HTTP_200_OK,
+            "response_message": "Total Travel Request List",
             "data": total_travel_request_list
         }
     except Exception as err:
         return {
             "error": str(err),
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "responseMessage": "Something Went Wrong"
+            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "response_message": "Something Went Wrong"
         }
 
 
@@ -1489,8 +1489,8 @@ def pending_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
-            "responseMessage": "Database Connection Error",
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "response_message": "Database Connection Error",
+            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
         return jsonify(custom_error_response)
@@ -1501,22 +1501,22 @@ def pending_travel_request():
             pending_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             pending_travel_request_list = [
                 {
-                    "requestId": req.request_id,
-                    "requestName": req.request_name,
-                    "requestPolicy": req.request_policy,
-                    "startDate": req.start_date
+                    "request_id": req.request_id,
+                    "request_name": req.request_name,
+                    "request_policy": req.request_policy,
+                    "start_date": req.start_date
                 }
                 for req in pending_travel_request_data
             ]
             return {
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Pending Travel Request List",
+                "response_code": http_status_codes.HTTP_200_OK,
+                "response_message": "Pending Travel Request List",
                 "data": pending_travel_request_list
             }
         except Exception as err:
             return {
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong",
+                "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "response_message": "Something Went Wrong",
                 "error": str(err)
             }
 
@@ -1528,8 +1528,8 @@ def open_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
-            "responseMessage": "Database Connection Error",
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "response_message": "Database Connection Error",
+            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
         return jsonify(custom_error_response)
@@ -1541,22 +1541,22 @@ def open_travel_request():
             open_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             open_travel_request_list = [
                 {
-                    "requestId": req.request_id,
-                    "requestName": req.request_name,
-                    "requestPolicy": req.request_policy,
-                    "startDate": req.start_date
+                    "request_id": req.request_id,
+                    "request_name": req.request_name,
+                    "request_policy": req.request_policy,
+                    "start_date": req.start_date
                 }
                 for req in open_travel_request_data
             ]
             return {
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Open Travel Request List",
+                "response_code": http_status_codes.HTTP_200_OK,
+                "response_message": "Open Travel Request List",
                 "data": open_travel_request_list
             }
         except Exception as err:
             return {
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong",
+                "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "response_message": "Something Went Wrong",
                 "error": str(err)
             }
 

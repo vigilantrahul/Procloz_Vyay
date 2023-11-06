@@ -1009,12 +1009,12 @@ def request_perdiem():
                     "responseMessage": "Request ID Not Exists!!"
                 }
 
-            # Limit of the Diems (Max. 5)
-            if len(diems) < 0 or len(diems) > 5:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
-                }
+            # # Limit of the Diems (Max. 5)
+            # if len(diems) < 0 or len(diems) > 5:
+            #     return {
+            #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            #         "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
+            #     }
 
             for diem in diems:
                 diem['requestId'] = request_id
@@ -1145,7 +1145,7 @@ def other_expense():
         return jsonify(custom_error_response)
 
     if request.method == "GET":
-        pass
+        query = "SELECT international_roaming, incident_expense"
 
     if request.method == "POST":
         try:

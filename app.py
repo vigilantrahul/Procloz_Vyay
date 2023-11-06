@@ -1131,7 +1131,7 @@ def request_advcash():
             })
 
 
-# 7. Other Expense
+# 7. Other Expense API
 @app.route('/other-expense', methods=['GET', 'POST'])
 @jwt_required()
 def other_expense():
@@ -1145,8 +1145,29 @@ def other_expense():
         return jsonify(custom_error_response)
 
     if request.method == "GET":
-        query = "SELECT international_roaming, incident_expense"
+        request_id = request.headers.get("requestId")
+        query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
+        cursor.execute(query, (request_id, ))
 
+        # Fetch the data
+        other_expense_data = cursor.fetchone()
+
+        # Check if data is found
+        if other_expense_data:
+            international_roaming, incident_expense = other_expense_data
+        else:
+            international_roaming = None
+            incident_expense = None
+
+        response_data = {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Other Expense Data Fetched",
+            "data": {
+                "internationalRoaming": international_roaming,
+                "incidentExpense": incident_expense
+            }
+        }
+        return jsonify(response_data)
     if request.method == "POST":
         try:
             data = request.get_json()
@@ -1156,7 +1177,7 @@ def other_expense():
                     "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
                 })
 
-            # Validation of the international expense and internation roaming as per the requestPolicy
+            # Validation of the international expense and internation roaming as per the requestPolicy.
 
             request_id = data.get("requestId")
             if "incident_expense" in data or "international_roaming" in data:
@@ -1166,6 +1187,10 @@ def other_expense():
                 query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
                 cursor.execute(query, (international_roaming, incident_expense, request_id))
                 connection.commit()
+                return jsonify({
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Other Expense Saved Successfully"
+                })
         except Exception as err:
             return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -1216,7 +1241,7 @@ def request_submit():
         connection.commit()
 
         return {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Request Submitted Successfully"
         }
 
@@ -1262,7 +1287,7 @@ def request_approved():
         if result is None:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Request should be Submitted to get Approve or Reject!!"
+                "responseMessage": "Request should be Submitted to get Approve!!"
             }
 
         # Validation of the Value getting in the status Variable:
@@ -1273,7 +1298,7 @@ def request_approved():
         connection.commit()
 
         return {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Request Approved Successfully"
         }
 
@@ -1330,7 +1355,7 @@ def request_sent_for_payment():
         connection.commit()
 
         return {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Request Send for Payment Successfully"
         }
 
@@ -1387,7 +1412,7 @@ def request_paid():
         connection.commit()
 
         return {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Request Payment Made Successfully"
         }
 

@@ -505,7 +505,8 @@ def request_initiate():
                     "responseMessage": "Request ID Not Exists!!"
                 }
             else:
-                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose', 'status']
+                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose',
+                                'status']
                 response_data = dict(zip(column_names, result))
                 response_data = {
                     "requestId": response_data["request_id"],
@@ -578,7 +579,8 @@ def request_initiate():
             # Code for the Updating Request Data on that particular request id
             if result is not None:
                 sql_query = "UPDATE travelrequest SET organization = ?, user_id = ?, request_name = ?, request_policy = ?, start_date = ?, end_date = ?, purpose = ?, status = ? WHERE request_id = ?"
-                cursor.execute(sql_query, organization, employee_id, request_name, request_policy, start_date, end_date, purpose, status, request_id)
+                cursor.execute(sql_query, organization, employee_id, request_name, request_policy, start_date, end_date,
+                               purpose, status, request_id)
                 connection.commit()
 
                 return {
@@ -727,7 +729,6 @@ def update_cost_center():
 @app.route('/request-transport', methods=['GET', 'POST'])
 # @jwt_required()
 def request_transportation():
-
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -760,7 +761,7 @@ def request_transportation():
                 WHERE transport.request_id = ?
             """
 
-            cursor.execute(query, (request_id, ))
+            cursor.execute(query, (request_id,))
 
             # Fetch results
             results = cursor.fetchall()
@@ -772,7 +773,8 @@ def request_transportation():
                 transport_id, transport_type, trip_type, *trip_mapping_data = row
 
                 # Check if it's a new transport entry
-                if not current_transport or transport_type != current_transport['transportType'] or trip_type != current_transport['tripType']:
+                if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
+                        current_transport['tripType']:
 
                     if current_transport:
                         transport_data.append(current_transport)
@@ -854,6 +856,18 @@ def request_transportation():
                     "responseMessage": "Request ID Not Exists!!"
                 }
 
+            # Condition for updating the Existing Data in the Transport Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id = ?"
+            cursor.execute(query, request_Id)
+            result = cursor.fetchone()
+
+            print("result(Yeah Dude Exists if here It's Not None): ", result)
+
+            # Condition is that request_id data available in the transport table
+            if result:
+                query = "DELETE FROM transport where request_id=?"
+                cursor.execute(query, (request_Id, ))
+
             for trans in transports:
                 if 'trips' in trans and 'tripWay' in trans:
                     trips = trans['trips']
@@ -872,12 +886,10 @@ def request_transportation():
 
                 # Get the ID of the inserted row
                 transport_id_query = "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
-                cursor.execute(transport_id_query, (request_Id, employee_id, ))
+                cursor.execute(transport_id_query, (request_Id, employee_id,))
                 row_id = cursor.fetchone()
 
                 transport_id = row_id[0]
-                print("Done till here now")
-                print("transport_id: ", transport_id)  # Value Printing
 
                 # Condition for Taxi
                 if transport_type == "taxi":
@@ -900,7 +912,6 @@ def request_transportation():
 
                 # Condition for Trips
                 if trips is not None:
-                    print("Came to the condition")
                     for trip in trips:
                         trip['transport'] = transport_id
 
@@ -909,7 +920,6 @@ def request_transportation():
                         f"('{trip['from']}', '{trip['to']}', '{trip['departureDate']}', {trip['estimateCost']}, '{trip['transport']}')"
                         for trip in trips
                     ])
-                    print("so the value we are inserting here: ", values)
                     query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
                     cursor.execute(query)
                     connection.commit()
@@ -923,7 +933,7 @@ def request_transportation():
             return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Something Went Wrong",
-                "reason": str(err) # Error Code comes here
+                "reason": str(err)  # Error Code comes here
             })
 
 
@@ -1094,13 +1104,6 @@ def request_perdiem():
                     "responseMessage": "Request ID Not Exists!!"
                 }
 
-            # # Limit of the Diems (Max. 5)
-            # if len(diems) < 0 or len(diems) > 5:
-            #     return {
-            #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-            #         "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
-            #     }
-
             for diem in diems:
                 diem['requestId'] = request_id
 
@@ -1136,7 +1139,7 @@ def request_perdiem():
 @app.route('/request-advcash', methods=['GET', 'POST'])
 @jwt_required()
 def request_advcash():
-    # Validation for the Connection on DB/Server
+    # Validation for the Connection on DB/Server:
     if not connection:
         custom_error_response = {
             "responseMessage": "Database Connection Error",
@@ -1232,7 +1235,7 @@ def other_expense():
     if request.method == "GET":
         request_id = request.headers.get("requestId")
         query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
-        cursor.execute(query, (request_id, ))
+        cursor.execute(query, (request_id,))
 
         # Fetch the data
         other_expense_data = cursor.fetchone()

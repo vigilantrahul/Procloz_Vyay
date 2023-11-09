@@ -899,7 +899,7 @@ def request_transportation():
                     connection.commit()
 
                 # Condition for Car Rental
-                if transport_type == "carrental":
+                if transport_type == "carRental":
                     comment = trans["comment"]
                     from_date = trans["startDate"]
                     to_date = trans["endDate"]

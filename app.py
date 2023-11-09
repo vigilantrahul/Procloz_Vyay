@@ -746,7 +746,6 @@ def request_transportation():
             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
             query = """
                 SELECT 
-                    transport.id,
                     transport.transport_type,
                     transport.trip_type,
                     transporttripmapping.trip_from,
@@ -770,7 +769,7 @@ def request_transportation():
 
             # Inside the for loop where you process query results
             for row in results:
-                transport_id, transport_type, trip_type, *trip_mapping_data = row
+                transport_type, trip_type, *trip_mapping_data = row
 
                 # Check if it's a new transport entry
                 if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
@@ -779,7 +778,6 @@ def request_transportation():
                     if current_transport:
                         transport_data.append(current_transport)
                     current_transport = {
-                        'transportId': transport_id,
                         'transportType': transport_type,
                         'tripType': trip_type,
                         'trips': []
@@ -1704,7 +1702,7 @@ def open_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status='initiated' or status='rejected' and user_id=?"
+            query = "SELECT * FROM travelrequest WHERE status IN ('initiated', 'rejected') and user_id=?"
             open_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             open_travel_request_list = [
                 {

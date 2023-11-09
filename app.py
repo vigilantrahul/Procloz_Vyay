@@ -803,7 +803,7 @@ def request_transportation():
                     del current_transport["tripType"]
                     del current_transport["trips"]
 
-                elif current_transport["transportType"] == "carrental":
+                elif current_transport["transportType"] == "carRental":
                     current_transport["estimateCost"] = trip_mapping_data[3]
                     current_transport["startDate"] = trip_mapping_data[4]
                     current_transport["endDate"] = trip_mapping_data[5]

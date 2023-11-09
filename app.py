@@ -861,12 +861,10 @@ def request_transportation():
             cursor.execute(query, request_Id)
             result = cursor.fetchone()
 
-            print("result(Yeah Dude Exists if here It's Not None): ", result)
-
             # Condition is that request_id data available in the transport table
             if result:
                 query = "DELETE FROM transport where request_id=?"
-                cursor.execute(query, (request_Id, ))
+                cursor.execute(query, (request_Id,))
 
             for trans in transports:
                 if 'trips' in trans and 'tripWay' in trans:
@@ -1570,23 +1568,79 @@ def travel_request_count():
 def total_travel_request():
     try:
         employeeId = request.headers.get('employeeId')
-        query = "SELECT * FROM travelrequest WHERE user_id=?"
-        result = cursor.execute(query, (employeeId,)).fetchall()
-        total_travel_request_list = [
+        # user_type = int(request.headers.get('userType'))
+
+        # Condition of Required Data in Request
+        if employeeId is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> EmployeeId and UserType are required Fields!!"
+            }
+
+        # Code block for the Manager Level Employee
+        # if user_type == 1:
+        query = """
+                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id, e.manager_id,m.employee_first_name 
+                from userproc05092023_1 e 
+                join userproc05092023_1 m
+                on e.manager_id=m.employee_id 
+                join travelrequest t 
+                on t.user_id=e.employee_id
+                WHERE e.employee_id=? or e.manager_id=?
+            """
+        # employee_list = "SELECT employee_id from userproc05092023_1 WHERE manager_id=?"
+        result = cursor.execute(query, (employeeId, employeeId,)).fetchall()
+        print("result: ", result)
+
+        manager_down_lines = [
             {
-                "request_id": req.request_id,
-                "request_name": req.request_name,
-                "request_policy": req.request_policy,
-                "start_date": req.start_date
+                "request_id": req[0],
+                "request_name": req[1],
+                "start_date": req[2],
+                "request_policy": req[3],
+                "employee_name": req[4]
             }
             for req in result
         ]
-
         return {
-            "response_code": http_status_codes.HTTP_200_OK,
-            "response_message": "Total Travel Request List",
-            "data": total_travel_request_list
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": manager_down_lines,
+            "responseMessage": "Hey You ... Sab Chal Rha hai!!"
         }
+
+        # emp_list = [item[0] for item in result_1]
+        # print("emp_list: ", emp_list)
+        # emp_values = ', '.join(["'" + str(emp) + "'" for emp in emp_list])
+        # sql_query = f"SELECT travel_request_id FROM travelrequest WHERE employee_id IN ({emp_values});"
+        # result_2 = cursor.execute(query, (sql_query,)).fetchall()
+
+        # manager_down_lines = [
+        #     {
+        #         "request_id": req.request_id,
+        #         "request_name": req.request_name,
+        #         "request_policy": req.request_policy,
+        #         "start_date": req.start_date
+        #     }
+        #     for req in result
+        # ]
+
+        # query = "SELECT * FROM travelrequest WHERE user_id=?"
+        # result = cursor.execute(query, (employeeId,)).fetchall()
+        # total_travel_request_list = [
+        #     {
+        #         "request_id": req.request_id,
+        #         "request_name": req.request_name,
+        #         "request_policy": req.request_policy,
+        #         "start_date": req.start_date
+        #     }
+        #     for req in result
+        # ]
+
+        # return {
+        #     "response_code": http_status_codes.HTTP_200_OK,
+        #     "response_message": "Total Travel Request List",
+        #     "data": total_travel_request_list
+        # }
     except Exception as err:
         return {
             "error": str(err),

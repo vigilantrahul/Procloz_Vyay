@@ -1514,32 +1514,54 @@ def request_paid():
 @jwt_required()
 def travel_request_count():
     try:
-        # data = request.get_json()
-        #
-        # if "organization" not in data:
-        #     return {
-        #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-        #         "responseMessage": "(DEBUG) -> Organization is Required",
-        #     }
+        employeeId = request.headers.get('employeeId')
 
-        # organization = data.get('organization')
-
+        # Condition of the Total Request
         query = """
-                    SELECT
-                        COUNT(*) AS total_requests,
-                        SUM(CASE WHEN status IN ('rejected', 'initiated') THEN 1 ELSE 0 END) AS initiated_or_rejected_requests,
-                        SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END) AS submitted_requests
-                    FROM travelrequest;
-                """
-        cursor.execute(query)
+                SELECT COUNT(*) AS record_count
+                FROM (
+                    SELECT t.request_id, t.request_name, t.start_date, t.request_policy,
+                           e.employee_first_name, e.employee_id, t.status, e.manager_id
+                    FROM userproc05092023_1 e
+                    JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+                    JOIN travelrequest t ON t.user_id = e.employee_id
+                    WHERE e.employee_id=? OR e.manager_id=?
+                ) as Data;
+            """
+        cursor.execute(query, (employeeId, employeeId, ))
+        total_requests = cursor.fetchone()[0]
 
-        # Fetch the results
-        result = cursor.fetchone()
+        # Condition of the Open Request:
+        query = """
+                SELECT COUNT(*) AS record_count
+                FROM (
+                    SELECT t.request_id, t.request_name, t.status, t.start_date, t.request_policy,
+                        e.employee_first_name 
+                    FROM userproc05092023_1 e
+                    JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+                    JOIN travelrequest t ON t.user_id = e.employee_id
+                    WHERE e.employee_id = ? AND t.status IN ('initiated', 'rejected')
+                ) as Deta
+            """
+        cursor.execute(query, (employeeId,))
+        initiated_or_rejected_requests = cursor.fetchone()[0]
+        print("initiated_or_rejected_requests: ", initiated_or_rejected_requests)
 
-        # Store results in variables
-        total_requests = result[0]
-        initiated_or_rejected_requests = result[1]
-        submitted_requests = result[2]
+        # Condition of the Pending Request:
+        query = """
+                        SELECT COUNT(*) AS record_count
+                        FROM (
+                            SELECT t.request_id, t.request_name, t.status, t.start_date, t.request_policy,
+                                e.employee_first_name 
+                            FROM userproc05092023_1 e
+                            JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+                            JOIN travelrequest t ON t.user_id = e.employee_id
+                            WHERE e.employee_id = ? AND t.status IN ('submitted')
+                        ) as Deta
+                    """
+        cursor.execute(query, (employeeId,))
+        submitted_requests = cursor.fetchone()[0]
+        print("submitted_requests: ", submitted_requests)
 
         # Create a response dictionary
         response = {
@@ -1566,29 +1588,24 @@ def travel_request_count():
 def total_travel_request():
     try:
         employeeId = request.headers.get('employeeId')
-        # user_type = int(request.headers.get('userType'))
 
         # Condition of Required Data in Request
         if employeeId is None:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "(DEBUG) -> EmployeeId and UserType are required Fields!!"
+                "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
             }
 
-        # Code block for the Manager Level Employee
-        # if user_type == 1:
+        # Code block for fetching the request data from the travelrequest Table
         query = """
-                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id, e.manager_id,m.employee_first_name 
+                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name 
                 from userproc05092023_1 e 
-                join userproc05092023_1 m
-                on e.manager_id=m.employee_id 
-                join travelrequest t 
-                on t.user_id=e.employee_id
+                join userproc05092023_1 m on e.manager_id=m.employee_id 
+                join travelrequest t on t.user_id=e.employee_id
                 WHERE e.employee_id=? or e.manager_id=?
             """
-        # employee_list = "SELECT employee_id from userproc05092023_1 WHERE manager_id=?"
+
         result = cursor.execute(query, (employeeId, employeeId,)).fetchall()
-        print("result: ", result)
 
         manager_down_lines = [
             {
@@ -1596,7 +1613,9 @@ def total_travel_request():
                 "request_name": req[1],
                 "start_date": req[2],
                 "request_policy": req[3],
-                "employee_name": req[4]
+                "employee_name": req[4],
+                "status":req[5],
+                "Emp_id":req[6]
             }
             for req in result
         ]
@@ -1605,40 +1624,6 @@ def total_travel_request():
             "data": manager_down_lines,
             "responseMessage": "Hey You ... Sab Chal Rha hai!!"
         }
-
-        # emp_list = [item[0] for item in result_1]
-        # print("emp_list: ", emp_list)
-        # emp_values = ', '.join(["'" + str(emp) + "'" for emp in emp_list])
-        # sql_query = f"SELECT travel_request_id FROM travelrequest WHERE employee_id IN ({emp_values});"
-        # result_2 = cursor.execute(query, (sql_query,)).fetchall()
-
-        # manager_down_lines = [
-        #     {
-        #         "request_id": req.request_id,
-        #         "request_name": req.request_name,
-        #         "request_policy": req.request_policy,
-        #         "start_date": req.start_date
-        #     }
-        #     for req in result
-        # ]
-
-        # query = "SELECT * FROM travelrequest WHERE user_id=?"
-        # result = cursor.execute(query, (employeeId,)).fetchall()
-        # total_travel_request_list = [
-        #     {
-        #         "request_id": req.request_id,
-        #         "request_name": req.request_name,
-        #         "request_policy": req.request_policy,
-        #         "start_date": req.start_date
-        #     }
-        #     for req in result
-        # ]
-
-        # return {
-        #     "response_code": http_status_codes.HTTP_200_OK,
-        #     "response_message": "Total Travel Request List",
-        #     "data": total_travel_request_list
-        # }
     except Exception as err:
         return {
             "error": str(err),
@@ -1702,14 +1687,24 @@ def open_travel_request():
     if request.method == "GET":
         try:
             employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status IN ('initiated', 'rejected') and user_id=?"
+            # query = "SELECT * FROM travelrequest WHERE status IN ('initiated', 'rejected') and user_id=?"
+            query = """
+                    select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name 
+                    from userproc05092023_1 e 
+                    JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+                    JOIN travelrequest t ON t.user_id = e.employee_id
+                    WHERE e.employee_id=? AND t.status IN ('initiated', 'rejected');
+            """
             open_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
             open_travel_request_list = [
                 {
-                    "request_id": req.request_id,
-                    "request_name": req.request_name,
-                    "request_policy": req.request_policy,
-                    "start_date": req.start_date
+                    "request_id": req[0],
+                    "request_name": req[1],
+                    "start_date": req[2],
+                    "request_policy": req[3],
+                    "employee_name": req[4],
+                    "emp_id": req[5],
+                    "status": req[6]
                 }
                 for req in open_travel_request_data
             ]

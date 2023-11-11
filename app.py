@@ -11,6 +11,7 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_request_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -727,7 +728,7 @@ def update_cost_center():
 
 # 3. Request Transportation on Travel
 @app.route('/request-transport', methods=['GET', 'POST'])
-# @jwt_required()
+@jwt_required()
 def request_transportation():
     # Validation for the Connection on DB/Server
     if not connection:
@@ -743,6 +744,7 @@ def request_transportation():
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")  # Request ID for getting data
+
             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
             query = """
                 SELECT 
@@ -831,9 +833,17 @@ def request_transportation():
     if request.method == "POST":
         try:
             data = request.get_json()
+            transport_type = request.args.get('transportType')
+
+            # Validation of None Value
+            if transport_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Choose Valid Transport Type"
+                }
 
             # Validation of Data:
-            if "requestId" not in data or "transports" not in data or "employeeId" not in data:
+            if "requestId" not in data or "employeeId" not in data:
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                     "responseMessage": "Required Fields are Empty"
@@ -854,77 +864,37 @@ def request_transportation():
                     "responseMessage": "Request ID Not Exists!!"
                 }
 
-            # Condition for updating the Existing Data in the Transport Table:
-            query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id = ?"
-            cursor.execute(query, request_Id)
-            result = cursor.fetchone()
+            if transport_type == "flight":
+                if transports is None:
+                    return {
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                        "responseMessage": "Required Fields are Empty"
+                    }
+                result = flight_data(cursor, connection, request_Id, transports, employee_id)
+                return result
+            elif transport_type == "train":
+                if transports is None:
+                    return {
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                        "responseMessage": "Required Fields are Empty"
+                    }
+                result = train_data(cursor, connection, request_Id, transports, employee_id)
+                return result
+            elif transport_type == "bus":
+                if transports is None:
+                    return {
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                        "responseMessage": "Required Fields are Empty"
+                    }
+                result = bus_data(cursor, connection, request_Id, transports, employee_id)
+                return result
+            elif transport_type == "taxi":
 
-            # Condition is that request_id data available in the transport table
-            if result:
-                query = "DELETE FROM transport where request_id=?"
-                cursor.execute(query, (request_Id,))
-
-            for trans in transports:
-                if 'trips' in trans and 'tripWay' in trans:
-                    trips = trans['trips']
-                    trip_type = trans['tripWay']
-                else:
-                    # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
-                    trips = None
-                    trip_type = None
-
-                transport_type = trans['transportType']
-
-                # Inserting the data in the transport table
-                sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
-                cursor.execute(sql_query, (request_Id, transport_type, trip_type))
-                connection.commit()
-
-                # Get the ID of the inserted row
-                transport_id_query = "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
-                cursor.execute(transport_id_query, (request_Id, employee_id,))
-                row_id = cursor.fetchone()
-
-                transport_id = row_id[0]
-
-                # Condition for Taxi
-                if transport_type == "taxi":
-                    comment = trans["comment"]
-                    estimate_cost = trans["estimateCost"]
-
-                    query = f"INSERT INTO transporttripmapping (comment, estimated_cost, transport) VALUES (?, ?, ?)"
-                    cursor.execute(query, (comment, estimate_cost, transport_id))
-                    connection.commit()
-
-                # Condition for Car Rental
-                if transport_type == "carRental":
-                    comment = trans["comment"]
-                    from_date = trans["startDate"]
-                    to_date = trans["endDate"]
-                    estimate_cost = trans["estimateCost"]
-                    query = f"INSERT INTO transporttripmapping (comment, estimated_cost, from_date, to_date, transport) VALUES (?, ?, ?, ?, ?)"
-                    cursor.execute(query, (comment, estimate_cost, from_date, to_date, transport_id))
-                    connection.commit()
-
-                # Condition for Trips
-                if trips is not None:
-                    for trip in trips:
-                        trip['transport'] = transport_id
-
-                    # Construct the SQL query for bulk insert
-                    values = ', '.join([
-                        f"('{trip['from']}', '{trip['to']}', '{trip['departureDate']}', {trip['estimateCost']}, '{trip['transport']}')"
-                        for trip in trips
-                    ])
-                    query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
-                    cursor.execute(query)
-                    connection.commit()
-
-            # print("Transport(after adding requestId): ", transports)
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Hey All Good"
-            })
+                result = taxi_data(cursor, connection, data)
+                return result
+            elif transport_type == "carRental":
+                result = carrental_data(cursor, connection, data)
+                return result
         except Exception as err:
             return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -1281,6 +1251,26 @@ def other_expense():
                 "responseMessage": "Something Went Wrong",
                 "reason": str(err)
             })
+
+
+# 8. Clearing Data API
+@app.route('/clear-data', methods=['POST'])
+@jwt_required()
+def clear_data():
+    data = request.get_json()
+    request_id = data["requestId"]
+    print("request_id: ", request_id)
+    transport_type = data["transportType"]
+    print("transport_type: ", transport_type)
+
+    # Validation of None Value
+    if transport_type is None:
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Choose Valid Transport Type"
+        }
+    result = clear_request_data(cursor, request_id, transport_type)
+    return result
 
 
 # ------------------------------- Request Status Update -------------------------------

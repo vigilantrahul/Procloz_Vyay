@@ -1300,17 +1300,27 @@ def request_submit():
         status = data.get("status")
 
         # Validating request_id in travel Request Table:
-        query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+        query = "SELECT TOP 1 user_id FROM travelrequest WHERE request_id = ?"
         cursor.execute(query, request_id)
         result = cursor.fetchone()
-        if result is None:
+        print("Result: ", result)
+
+        if not result:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Request ID Not Exists!!"
             }
+        user_id = result[0]
+        print("user_id: ", user_id)
+
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
         connection.commit()
+
+        # Code for the Notification:
+        # 1. Check who is manager of that person,
+        # 2. Update this in the Notification Table,
+        # 3. Send Email to that Manager's Email ...
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -1656,15 +1666,15 @@ def total_travel_request():
                 "start_date": req[2],
                 "request_policy": req[3],
                 "employee_name": req[4],
-                "status":req[5],
-                "Emp_id":req[6]
+                "status":req[6],
+                "Emp_id":req[5]
             }
             for req in result
         ]
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
             "data": manager_down_lines,
-            "responseMessage": "Hey You ... Sab Chal Rha hai!!"
+            "responseMessage": "Data Fetched Successfully"
         }
     except Exception as err:
         return {

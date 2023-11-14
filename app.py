@@ -1300,33 +1300,33 @@ def request_submit():
         status = data.get("status")
 
         # Validating request_id in travel Request Table:
-        query = "SELECT TOP 1 user_id, employee_first_name, employee_middle_name, employee_last_name FROM travelrequest WHERE request_id = ?"
-        cursor.execute(query, request_id)
-        result = cursor.fetchone()
-        print("Result: ", result)
+        # query = "SELECT TOP 1 user_id, employee_first_name, employee_middle_name, employee_last_name FROM travelrequest WHERE request_id = ?"
+        # cursor.execute(query, request_id)
+        # result = cursor.fetchone()
+        # print("Result: ", result)
+        #
+        # if not result:
+        #     return {
+        #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+        #         "responseMessage": "Request ID Not Exists!!"
+        #     }
+        # user_id, employee_first_name, employee_middle_name, employee_last_name = result
+        # print("user_id: ", user_id)
+        # print("Name: ", employee_first_name+" "+employee_middle_name+" "+employee_last_name)
 
-        if not result:
-            return {
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Request ID Not Exists!!"
-            }
-        user_id, employee_first_name, employee_middle_name, employee_last_name = result
-        print("user_id: ", user_id)
-        print("Name: ", employee_first_name+" "+employee_middle_name+" "+employee_last_name)
-
-        email_query = """
-            SELECT
-                e.organization AS org,
-                m.email_id AS manager_email
-            FROM userproc05092023_1 e
-            JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-            WHERE e.employee_id = ?
-        """
-        cursor.execute(email_query, (user_id, ))
-        email_address = cursor.fetchone()
-        organization_id, manager_id = email_address
-        print("organization_id: ", organization_id)
-        print("manager_id: ", manager_id)
+        # email_query = """
+        #     SELECT
+        #         e.organization AS org,
+        #         m.email_id AS manager_email
+        #     FROM userproc05092023_1 e
+        #     JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+        #     WHERE e.employee_id = ?
+        # """
+        # cursor.execute(email_query, (user_id, ))
+        # email_address = cursor.fetchone()
+        # organization_id, manager_id = email_address
+        # print("organization_id: ", organization_id)
+        # print("manager_id: ", manager_id)
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))

@@ -1259,9 +1259,7 @@ def other_expense():
 def clear_data():
     data = request.get_json()
     request_id = data["requestId"]
-    print("request_id: ", request_id)
     transport_type = data["transportType"]
-    print("transport_type: ", transport_type)
 
     # Validation of None Value
     if transport_type is None:
@@ -1374,6 +1372,63 @@ def request_approved():
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Request Approved Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/request-withdrawn', methods=['POST'])
+@jwt_required()
+def request_withdrawn():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table if approved then can be withdrawn:
+        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'approved'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request Can't be Withdrawn!!"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        # ...
+
+        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Withdrawn Successfully"
         }
 
     except Exception as err:
@@ -1535,23 +1590,21 @@ def travel_request_count():
             """
         cursor.execute(query, (employeeId,))
         initiated_or_rejected_requests = cursor.fetchone()[0]
-        print("initiated_or_rejected_requests: ", initiated_or_rejected_requests)
 
         # Condition of the Pending Request:
         query = """
-                        SELECT COUNT(*) AS record_count
-                        FROM (
-                            SELECT t.request_id, t.request_name, t.status, t.start_date, t.request_policy,
-                                e.employee_first_name 
-                            FROM userproc05092023_1 e
-                            JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-                            JOIN travelrequest t ON t.user_id = e.employee_id
-                            WHERE e.employee_id = ? AND t.status IN ('submitted')
-                        ) as Deta
-                    """
+                    SELECT COUNT(*) AS record_count
+                    FROM (
+                        SELECT t.request_id, t.request_name, t.status, t.start_date, t.request_policy,
+                            e.employee_first_name 
+                        FROM userproc05092023_1 e
+                        JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+                        JOIN travelrequest t ON t.user_id = e.employee_id
+                        WHERE e.employee_id = ? AND t.status IN ('submitted')
+                    ) as Deta
+                """
         cursor.execute(query, (employeeId,))
         submitted_requests = cursor.fetchone()[0]
-        print("submitted_requests: ", submitted_requests)
 
         # Create a response dictionary
         response = {
@@ -1563,7 +1616,6 @@ def travel_request_count():
             }
         }
         return response
-
     except Exception as err:
         return jsonify({
             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -1596,6 +1648,56 @@ def total_travel_request():
             """
 
         result = cursor.execute(query, (employeeId, employeeId,)).fetchall()
+
+        manager_down_lines = [
+            {
+                "request_id": req[0],
+                "request_name": req[1],
+                "start_date": req[2],
+                "request_policy": req[3],
+                "employee_name": req[4],
+                "status":req[5],
+                "Emp_id":req[6]
+            }
+            for req in result
+        ]
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": manager_down_lines,
+            "responseMessage": "Hey You ... Sab Chal Rha hai!!"
+        }
+    except Exception as err:
+        return {
+            "error": str(err),
+            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "response_message": "Something Went Wrong"
+        }
+
+
+# To Be Approved Request Under a Manager:
+@app.route('/request-to-approved', methods=['GET'])
+@jwt_required()
+def request_tobe_approved():
+    try:
+        employeeId = request.headers.get('employeeId')
+
+        # Condition of Required Data in Request
+        if employeeId is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
+            }
+
+        # Code block for fetching the request data from the travelrequest Table
+        query = """
+                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name 
+                from userproc05092023_1 e 
+                join userproc05092023_1 m on e.manager_id=m.employee_id 
+                join travelrequest t on t.user_id=e.employee_id
+                WHERE e.manager_id=?
+            """
+
+        result = cursor.execute(query, (employeeId,)).fetchall()
 
         manager_down_lines = [
             {

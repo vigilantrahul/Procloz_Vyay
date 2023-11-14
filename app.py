@@ -1300,7 +1300,7 @@ def request_submit():
         status = data.get("status")
 
         # Validating request_id in travel Request Table:
-        query = "SELECT TOP 1 user_id FROM travelrequest WHERE request_id = ?"
+        query = "SELECT TOP 1 user_id, employee_first_name, employee_middle_name, employee_last_name FROM travelrequest WHERE request_id = ?"
         cursor.execute(query, request_id)
         result = cursor.fetchone()
         print("Result: ", result)
@@ -1310,17 +1310,48 @@ def request_submit():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Request ID Not Exists!!"
             }
-        user_id = result[0]
+        user_id, employee_first_name, employee_middle_name, employee_last_name = result
         print("user_id: ", user_id)
+        print("Name: ", employee_first_name+" "+employee_middle_name+" "+employee_last_name)
+
+        email_query = """
+            SELECT
+                e.organization AS org,
+                m.email_id AS manager_email
+            FROM userproc05092023_1 e
+            JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+            WHERE e.employee_id = ?
+        """
+        cursor.execute(email_query, (user_id, ))
+        email_address = cursor.fetchone()
+        organization_id, manager_id = email_address
+        print("organization_id: ", organization_id)
+        print("manager_id: ", manager_id)
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
         connection.commit()
 
         # Code for the Notification:
-        # 1. Check who is manager of that person,
+        # sender_email = "mverma@procloz.com"
+        # sample_email = "vmukul99@gmail.com"
+        #
+        # # Send the Email to the user's email
+        # msg = Message('Request for Approval!!', sender=sender_email, recipients=[sample_email])
+        # msg.body = f"""
+        #     Hi,
+        #
+        #     There is one request from {Employee_Name} for Approval!!, Please review and take a valid Action.
+        #
+        #     You can login to VYAY to review the request using {mention vyay link here}
+        #
+        #     Thanks,
+        #     Team VYAY
+        # """
+        # mail.send(msg)
+        # 1. Check who is manager of that person, (Done)
         # 2. Update this in the Notification Table,
-        # 3. Send Email to that Manager's Email ...
+        # 3. Send Email to that Manager's Email ... (Done)
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -1679,8 +1710,8 @@ def total_travel_request():
     except Exception as err:
         return {
             "error": str(err),
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "response_message": "Something Went Wrong"
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
         }
 
 
@@ -1729,8 +1760,8 @@ def request_tobe_approved():
     except Exception as err:
         return {
             "error": str(err),
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "response_message": "Something Went Wrong"
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
         }
 
 
@@ -1741,8 +1772,8 @@ def pending_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
-            "response_message": "Database Connection Error",
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
         return jsonify(custom_error_response)
@@ -1761,14 +1792,14 @@ def pending_travel_request():
                 for req in pending_travel_request_data
             ]
             return {
-                "response_code": http_status_codes.HTTP_200_OK,
-                "response_message": "Pending Travel Request List",
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Pending Travel Request List",
                 "data": pending_travel_request_list
             }
         except Exception as err:
             return {
-                "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "response_message": "Something Went Wrong",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong",
                 "error": str(err)
             }
 
@@ -1780,8 +1811,8 @@ def open_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
-            "response_message": "Database Connection Error",
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
         return jsonify(custom_error_response)
@@ -1811,14 +1842,14 @@ def open_travel_request():
                 for req in open_travel_request_data
             ]
             return {
-                "response_code": http_status_codes.HTTP_200_OK,
-                "response_message": "Open Travel Request List",
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Open Travel Request List",
                 "data": open_travel_request_list
             }
         except Exception as err:
             return {
-                "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "response_message": "Something Went Wrong",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong",
                 "error": str(err)
             }
 

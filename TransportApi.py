@@ -4,9 +4,7 @@ from constants import http_status_codes, custom_status_codes
 def clear_request_data(cursor, request_id, transport_type):
 
     # Condition is that request_id data available in the transport table regarding
-    query = """DELETE FROM transport
-               WHERE request_id = ? and transport_type=?;
-            """
+    query = "DELETE FROM transport WHERE request_id = ? and transport_type=?"
     cursor.execute(query, (request_id, transport_type, ))
     return {
         "responseMessage": "Data Cleared Successfully",

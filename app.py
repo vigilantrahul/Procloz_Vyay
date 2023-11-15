@@ -1309,7 +1309,7 @@ def request_submit():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Request ID Not Exists!!"
             }
-        user_id = result[0]
+        # user_id = result[0]
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
@@ -1672,8 +1672,8 @@ def total_travel_request():
     except Exception as err:
         return {
             "error": str(err),
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "response_message": "Something Went Wrong"
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
         }
 
 
@@ -1722,8 +1722,8 @@ def total_travel_request():
 #     except Exception as err:
 #         return {
 #             "error": str(err),
-#             "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "response_message": "Something Went Wrong"
+#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+#             "responseMessage": "Something Went Wrong"
 #         }
 
 
@@ -1734,8 +1734,8 @@ def pending_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
-            "response_message": "Database Connection Error",
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
         return jsonify(custom_error_response)
@@ -1754,14 +1754,14 @@ def pending_travel_request():
                 for req in pending_travel_request_data
             ]
             return {
-                "response_code": http_status_codes.HTTP_200_OK,
-                "response_message": "Pending Travel Request List",
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Pending Travel Request List",
                 "data": pending_travel_request_list
             }
         except Exception as err:
             return {
-                "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "response_message": "Something Went Wrong",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong",
                 "error": str(err)
             }
 
@@ -1773,8 +1773,8 @@ def open_travel_request():
     if not connection:
         custom_error_response = {
             "connection": str(connection),
-            "response_message": "Database Connection Error",
-            "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "reason": "Failed to connect to the database. Please try again later."
         }
         return jsonify(custom_error_response)
@@ -1804,14 +1804,14 @@ def open_travel_request():
                 for req in open_travel_request_data
             ]
             return {
-                "response_code": http_status_codes.HTTP_200_OK,
-                "response_message": "Open Travel Request List",
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Open Travel Request List",
                 "data": open_travel_request_list
             }
         except Exception as err:
             return {
-                "response_code": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "response_message": "Something Went Wrong",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong",
                 "error": str(err)
             }
 

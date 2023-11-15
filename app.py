@@ -11,7 +11,8 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
-from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_request_data
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_request_data, \
+    cancel_request_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -1271,6 +1272,27 @@ def clear_data():
     return result
 
 
+@app.route('/cancel-request', methods=['POST'])
+@jwt_required()
+def cancel_request():
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+        query = f"DELETE FROM travelrequest WHERE request_id = '{request_id}'"
+        cursor.execute(query)
+
+        return {
+            "responseMessage": "Request Cancelled Successfully",
+            "responseCode": http_status_codes.HTTP_200_OK
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
+
+
 # ------------------------------- Request Status Update -------------------------------
 
 @app.route('/request-submit', methods=['POST'])
@@ -1576,7 +1598,7 @@ def travel_request_count():
                     WHERE e.employee_id=? OR e.manager_id=?
                 ) as Data;
             """
-        cursor.execute(query, (employeeId, employeeId, ))
+        cursor.execute(query, (employeeId, employeeId,))
         total_requests = cursor.fetchone()[0]
 
         # Condition of the Open Request:
@@ -1643,11 +1665,31 @@ def total_travel_request():
 
         # Code block for fetching the request data from the travelrequest Table
         query = """
-                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name 
-                from userproc05092023_1 e 
-                join userproc05092023_1 m on e.manager_id=m.employee_id 
-                join travelrequest t on t.user_id=e.employee_id
-                WHERE e.employee_id=? or e.manager_id=?
+                SELECT DISTINCT
+                    t.request_id,
+                    t.request_name,
+                    t.start_date,
+                    t.request_policy,
+                    e.employee_first_name,
+                    e.employee_id,
+                    t.status,
+                    t.cash_in_advance+SUM(h.estimated_cost) AS total_estimated_cost
+                FROM userproc05092023_1 e
+                JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+                JOIN travelrequest t ON t.user_id = e.employee_id
+                JOIN hotel h ON h.request_id = t.request_id
+                JOIN transport trans ON trans.request_id = t.request_id
+                JOIN transporttripmapping transmap ON trans.id = transmap.transport
+                WHERE e.employee_id = 'PC02' OR e.manager_id = 'PC02'
+                GROUP BY
+                    t.request_id,
+                    t.request_name,
+                    t.start_date,
+                    t.request_policy,
+                    e.employee_first_name,
+                    e.employee_id,
+                    t.status,
+                    t.cash_in_advance;
             """
 
         result = cursor.execute(query, (employeeId, employeeId,)).fetchall()
@@ -1659,8 +1701,9 @@ def total_travel_request():
                 "start_date": req[2],
                 "request_policy": req[3],
                 "employee_name": req[4],
-                "status":req[6],
-                "Emp_id":req[5]
+                "Emp_id": req[5],
+                "status": req[6],
+                "total_amount": req[7],
             }
             for req in result
         ]
@@ -1678,53 +1721,53 @@ def total_travel_request():
 
 
 # To Be Approved Request Under a Manager:
-# @app.route('/request-to-approved', methods=['GET'])
-# @jwt_required()
-# def request_tobe_approved():
-#     try:
-#         employeeId = request.headers.get('employeeId')
-#
-#         # Condition of Required Data in Request
-#         if employeeId is None:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
-#             }
-#
-#         # Code block for fetching the request data from the travelrequest Table
-#         query = """
-#                 select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name
-#                 from userproc05092023_1 e
-#                 join userproc05092023_1 m on e.manager_id=m.employee_id
-#                 join travelrequest t on t.user_id=e.employee_id
-#                 WHERE e.manager_id=?
-#             """
-#
-#         result = cursor.execute(query, (employeeId,)).fetchall()
-#
-#         manager_down_lines = [
-#             {
-#                 "request_id": req[0],
-#                 "request_name": req[1],
-#                 "start_date": req[2],
-#                 "request_policy": req[3],
-#                 "employee_name": req[4],
-#                 "status":req[5],
-#                 "Emp_id":req[6]
-#             }
-#             for req in result
-#         ]
-#         return {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "data": manager_down_lines,
-#             "responseMessage": "Hey You ... Sab Chal Rha hai!!"
-#         }
-#     except Exception as err:
-#         return {
-#             "error": str(err),
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong"
-#         }
+@app.route('/request-to-approved', methods=['GET'])
+@jwt_required()
+def request_tobe_approved():
+    try:
+        employeeId = request.headers.get('employeeId')
+
+        # Condition of Required Data in Request
+        if employeeId is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
+            }
+
+        # Code block for fetching the request data from the travelrequest Table
+        query = """
+                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name
+                from userproc05092023_1 e
+                join userproc05092023_1 m on e.manager_id=m.employee_id
+                join travelrequest t on t.user_id=e.employee_id
+                WHERE e.manager_id=?
+            """
+
+        result = cursor.execute(query, (employeeId,)).fetchall()
+
+        manager_down_lines = [
+            {
+                "request_id": req[0],
+                "request_name": req[1],
+                "start_date": req[2],
+                "request_policy": req[3],
+                "employee_name": req[4],
+                "status": req[5],
+                "Emp_id": req[6]
+            }
+            for req in result
+        ]
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": manager_down_lines,
+            "responseMessage": "Hey You ... Sab Chal Rha hai!!"
+        }
+    except Exception as err:
+        return {
+            "error": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
+        }
 
 
 # Pending Request of specific Employee:

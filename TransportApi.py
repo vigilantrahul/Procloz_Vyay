@@ -1,6 +1,23 @@
 from constants import http_status_codes, custom_status_codes
 
 
+def cancel_request_data(cursor, request_id):
+    try:
+        # Condition is that request_id data available in the transport table regarding
+        query = "DELETE FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, (request_id, ))
+        return {
+            "responseMessage": "Request Cancelled Successfully",
+            "responseCode": http_status_codes.HTTP_200_OK
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
+
+
 def clear_request_data(cursor, request_id, transport_type):
 
     # Condition is that request_id data available in the transport table regarding

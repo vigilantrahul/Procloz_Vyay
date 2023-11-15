@@ -1752,8 +1752,8 @@ def request_tobe_approved():
                 "start_date": req[2],
                 "request_policy": req[3],
                 "employee_name": req[4],
-                "status": req[5],
-                "Emp_id": req[6]
+                "Emp_id": req[5],
+                "status": req[6]
             }
             for req in result
         ]

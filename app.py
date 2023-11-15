@@ -1385,62 +1385,62 @@ def request_approved():
         })
 
 
-# @app.route('/request-withdrawn', methods=['POST'])
-# @jwt_required()
-# def request_withdrawn():
-#     try:
-#         data = request.get_json()
-#
-#         # Validation for the Connection on DB/Server
-#         if not connection:
-#             custom_error_response = {
-#                 "responseMessage": "Database Connection Error",
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "reason": "Failed to connect to the database. Please try again later."
-#             }
-#             # Return the custom error response with a 500 status code
-#             return jsonify(custom_error_response)
-#
-#         # Validation of Required Data:
-#         if "requestId" not in data or "status" not in data:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Required Fields are Empty"
-#             }
-#
-#         request_id = data.get("requestId")
-#         status = data.get("status")
-#
-#         # Validating request_id in travel Request Table if approved then can be withdrawn:
-#         query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'approved'"
-#         cursor.execute(query, (request_id,))
-#         result = cursor.fetchone()
-#
-#         if result:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Request Can't be Withdrawn!!"
-#             }
-#
-#         # Validation of the Value getting in the status Variable:
-#         # ...
-#
-#         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
-#         cursor.execute(query, (status, request_id))
-#         connection.commit()
-#
-#         return {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "responseMessage": "Request Withdrawn Successfully"
-#         }
-#
-#     except Exception as err:
-#         return jsonify({
-#             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#             "responseMessage": "Something Went Wrong",
-#             "reason": str(err)
-#         })
-#
+@app.route('/request-withdrawn', methods=['POST'])
+@jwt_required()
+def request_withdrawn():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table if approved then can be withdrawn:
+        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'approved'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request Can't be Withdrawn!!"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        # ...
+
+        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Withdrawn Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
 
 @app.route('/expense-admin-approve', methods=['POST'])
 @jwt_required()

@@ -1680,7 +1680,7 @@ def total_travel_request():
                 JOIN hotel h ON h.request_id = t.request_id
                 JOIN transport trans ON trans.request_id = t.request_id
                 JOIN transporttripmapping transmap ON trans.id = transmap.transport
-                WHERE e.employee_id = 'PC02' OR e.manager_id = 'PC02'
+                WHERE e.employee_id = ? OR e.manager_id = ?
                 GROUP BY
                     t.request_id,
                     t.request_name,

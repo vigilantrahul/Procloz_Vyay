@@ -2,11 +2,10 @@ import os
 import random
 import sys
 import time
-import json
 from datetime import timedelta, datetime
 import pyodbc
 from flask_mail import Mail, Message
-from flask import Flask, request, jsonify, session, g
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
@@ -1277,9 +1276,10 @@ def clear_data():
 def cancel_request():
     try:
         data = request.get_json()
-        request_id = data["requestId"]
-        query = f"DELETE FROM travelrequest WHERE request_id = '{request_id}'"
-        cursor.execute(query)
+        # request_id = data["requestId"]
+        request_id = 'DRYS151123163044'
+        query = f"DELETE FROM travelrequest WHERE request_id = ?"
+        cursor.execute(query, (request_id, ))
 
         return {
             "responseMessage": "Request Cancelled Successfully",
@@ -1331,11 +1331,25 @@ def request_submit():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Request ID Not Exists!!"
             }
-        # user_id = result[0]
+        user_id = result[0]
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
         connection.commit()
+
+        # get the Manager's Email of the user_id
+        email_query = """
+            SELECT
+                m.email_id AS manager_email
+            FROM
+                userproc05092023_1 e
+            JOIN
+                userproc05092023_1 m ON e.manager_id = m.employee_id
+            WHERE
+                e.employee_id = ?
+        """
+        # Update the Notification in the Table Notification
+        # Send Email to the Manager
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -1586,50 +1600,24 @@ def travel_request_count():
     try:
         employeeId = request.headers.get('employeeId')
 
-        # Condition of the Total Request
-        query = """
-                SELECT COUNT(*) AS record_count
-                FROM (
-                    SELECT t.request_id, t.request_name, t.start_date, t.request_policy,
-                           e.employee_first_name, e.employee_id, t.status, e.manager_id
-                    FROM userproc05092023_1 e
-                    JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-                    JOIN travelrequest t ON t.user_id = e.employee_id
-                    WHERE e.employee_id=? OR e.manager_id=?
-                ) as Data;
-            """
-        cursor.execute(query, (employeeId, employeeId,))
-        total_requests = cursor.fetchone()[0]
-
         # Condition of the Open Request:
         query = """
-                SELECT COUNT(*) AS record_count
-                FROM (
-                    SELECT t.request_id, t.request_name, t.status, t.start_date, t.request_policy,
-                        e.employee_first_name 
-                    FROM userproc05092023_1 e
-                    JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-                    JOIN travelrequest t ON t.user_id = e.employee_id
-                    WHERE e.employee_id = ? AND t.status IN ('initiated', 'rejected')
-                ) as Deta
+                SELECT
+                    COUNT(*) AS total_requests,
+                    SUM(CASE WHEN t.status IN ('initiated', 'rejected') THEN 1 ELSE 0 END) AS initiated_or_rejected_requests,
+                    SUM(CASE WHEN t.status = 'submitted' THEN 1 ELSE 0 END) AS submitted_requests
+                FROM
+                    userproc05092023_1 e
+                JOIN
+                    userproc05092023_1 m ON e.manager_id = m.employee_id
+                JOIN
+                    travelrequest t ON t.user_id = e.employee_id
+                WHERE
+                    e.employee_id = ? OR e.manager_id = ?;
             """
-        cursor.execute(query, (employeeId,))
-        initiated_or_rejected_requests = cursor.fetchone()[0]
-
-        # Condition of the Pending Request:
-        query = """
-                    SELECT COUNT(*) AS record_count
-                    FROM (
-                        SELECT t.request_id, t.request_name, t.status, t.start_date, t.request_policy,
-                            e.employee_first_name 
-                        FROM userproc05092023_1 e
-                        JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-                        JOIN travelrequest t ON t.user_id = e.employee_id
-                        WHERE e.employee_id = ? AND t.status IN ('submitted')
-                    ) as Deta
-                """
-        cursor.execute(query, (employeeId,))
-        submitted_requests = cursor.fetchone()[0]
+        cursor.execute(query, (employeeId, employeeId, ))
+        requests = cursor.fetchone()
+        total_requests, initiated_or_rejected_requests, submitted_requests = requests
 
         # Create a response dictionary
         response = {
@@ -1980,6 +1968,11 @@ def get_profile():
         "responseMessage": "Success",
         "data": task_list
     })
+
+
+@app.route('/need-help', methods=['GET'])
+def need_help():
+    pass
 
 
 if __name__ == '__main__':

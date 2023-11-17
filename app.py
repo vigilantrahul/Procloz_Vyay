@@ -78,8 +78,8 @@ sys.path.append('/tmp/8dbb3862660c8b6/antenv/lib/python3.9/site-packages')
 app.config['MAIL_SERVER'] = 'smtp.office365.com'  # Replace with your SMTP server
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'mverma@procloz.com'  # Replace with your email
-app.config['MAIL_PASSWORD'] = 'Ruv14930'  # Replace with your email password
+app.config['MAIL_USERNAME'] = 'noreply@vyay.tech'  # Replace with your email
+app.config['MAIL_PASSWORD'] = 'BGweq589'  # Replace with your email password
 
 mail = Mail(app)
 
@@ -286,7 +286,7 @@ def forgot_password():
         query = "UPDATE userproc05092023_1 SET otp=?, otp_created_at=? WHERE email_id=?"
         cursor.execute(query, (otp, current_time, email))
         connection.commit()
-        sender_email = "mverma@procloz.com"
+        sender_email = "noreply@vyay.tech"
 
         # Send the OTP to the user's email
         msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
@@ -352,7 +352,7 @@ def reset_password():
 
     email = data.get('email', '')
     new_password = data.get('new_password', '')
-    sender_email = "mverma@procloz.com"
+    sender_email = "noreply@vyay.tech"
 
     if email == '' or new_password == '':
         return {
@@ -1271,15 +1271,26 @@ def clear_data():
     return result
 
 
+# 9. Canceling Request Data API
 @app.route('/cancel-request', methods=['POST'])
 @jwt_required()
 def cancel_request():
     try:
         data = request.get_json()
-        # request_id = data["requestId"]
-        request_id = 'DRYS151123163044'
-        query = f"DELETE FROM travelrequest WHERE request_id = ?"
-        cursor.execute(query, (request_id, ))
+        request_id = data["requestId"]
+        print("request_id: ", request_id)
+
+        # request_id = 'DRYS151123163044'
+        query = """
+            DELETE tr
+            From travelrequest tr
+            join hotel h on tr.request_id = h.request_id
+            join transport t on t.request_id = tr.request_id
+            join transporttripmapping tmap on tmap.transport = t.id
+            join perdiem pr on tr.request_id = pr.request_id
+            where tr.request_id = ?
+        """
+        cursor.execute(query, (request_id,))
 
         return {
             "responseMessage": "Request Cancelled Successfully",
@@ -1291,6 +1302,53 @@ def cancel_request():
             "responseMessage": "Something Went Wrong",
             "reason": str(err)
         }
+
+
+# 10. Request Detail Page API
+@app.route('/request-detail', methods=['GET'])
+@jwt_required()
+def request_detail():
+    request_id = request.headers.get("requestId")
+    print("request_id: ", request_id)
+    query = """
+        select 
+            t.request_id,
+            t.request_name,
+            t.start_date,
+            t.request_policy,
+            e.employee_first_name,
+            e.employee_id,
+            t.status,
+            t.cash_in_advance,
+            trans.transport_type,
+            trans.trip_type,
+            h.estimated_cost hotel_estimated_cost,
+            tmap.estimated_cost transport_map_cost,
+            COALESCE(t.cash_in_advance,0) + COALESCE(h.estimated_cost,0) + COALESCE(tmap.estimated_cost,0) as "Total Cost"
+            FROM userproc05092023_1 e
+        JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+        Join travelrequest t ON t.user_id= e.employee_id
+        Left Join ( select request_id,sum(estimated_cost) as estimated_cost from hotel group by request_id)
+                h ON h.request_id = t.request_id
+        Left Join transport trans ON trans.request_id = t.request_id 
+            and  trans.request_id = h.request_id
+        Left Join ( select transport,sum(estimated_cost) as estimated_cost from transporttripmapping group by transport) 
+                tmap ON tmap.transport = trans.id
+        WHERE t.request_id = ?
+    """
+    result = cursor.execute(query, (request_id,)).fetchone()
+
+    # if not result:
+    #     return {
+    #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+    #         "responseMessage": "RequestId is Invalid"
+    #     }
+
+    print("result: ", result)
+    return {
+        "responseCode": 200,
+        "responseMessage": "Checked Ji!!!"
+    }
 
 
 # ------------------------------- Request Status Update -------------------------------
@@ -1323,7 +1381,7 @@ def request_submit():
 
         # Validating request_id in travel Request Table:
         query = "SELECT TOP 1 user_id FROM travelrequest WHERE request_id = ?"
-        cursor.execute(query, request_id)
+        cursor.execute(query, (request_id,))
         result = cursor.fetchone()
 
         if not result:
@@ -1348,6 +1406,27 @@ def request_submit():
             WHERE
                 e.employee_id = ?
         """
+        email_id = cursor.execute(email_query, (user_id,)).fetchone()
+        if not email_id:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong!!!"
+            }
+        email_id = email_id[0]
+        # email_id = "vmukul99@gmail.com"
+        sender_email = "noreply@vyay.tech"
+        msg = Message('Request for Approval!!', sender=sender_email, recipients=[email_id])
+        msg.body = f"""
+            Hi,
+ 
+            There is one request from {user_id} for Approval!!, Please review and take a valid Action.
+             
+            You can login to VYAY to review the request using ..
+             
+            Thanks,
+            Team VYAY
+        """
+        mail.send(msg)
         # Update the Notification in the Table Notification
         # Send Email to the Manager
 
@@ -1615,7 +1694,7 @@ def travel_request_count():
                 WHERE
                     e.employee_id = ? OR e.manager_id = ?;
             """
-        cursor.execute(query, (employeeId, employeeId, ))
+        cursor.execute(query, (employeeId, employeeId,))
         requests = cursor.fetchone()
         total_requests, initiated_or_rejected_requests, submitted_requests = requests
 
@@ -1972,7 +2051,21 @@ def get_profile():
 
 @app.route('/need-help', methods=['GET'])
 def need_help():
-    pass
+    try:
+        query = "select * from needhelp"
+        need_help_data = cursor.execute(query).fetchall()
+        task_list = [{'Question': ques.question, 'Answer': ques.answer} for ques in need_help_data]
+        return {
+            "data": task_list,
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Questions Fetched Successfully"
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong !!!",
+            "reason": str(err)
+        }
 
 
 if __name__ == '__main__':

@@ -1309,7 +1309,6 @@ def cancel_request():
 @jwt_required()
 def request_detail():
     request_id = request.headers.get("requestId")
-    print("request_id: ", request_id)
     query = """
         select 
             t.request_id,
@@ -1317,37 +1316,97 @@ def request_detail():
             t.start_date,
             t.request_policy,
             e.employee_first_name,
+            t.end_date,
             e.employee_id,
             t.status,
             t.cash_in_advance,
-            trans.transport_type,
-            trans.trip_type,
             h.estimated_cost hotel_estimated_cost,
-            tmap.estimated_cost transport_map_cost,
-            COALESCE(t.cash_in_advance,0) + COALESCE(h.estimated_cost,0) + COALESCE(tmap.estimated_cost,0) as "Total Cost"
-            FROM userproc05092023_1 e
+            tmap.Flight_Cost,
+            tbus.Bus_Cost,
+            ttrain.Train_Cost,
+            tcarrental.CarRental,
+            taxicost.Taxi_Cost,
+            COALESCE(t.cash_in_advance,0) + COALESCE(h.estimated_cost,0) + COALESCE(tmap.Flight_Cost,0) + COALESCE(tbus.Bus_Cost,0) + COALESCE(ttrain.Train_Cost,0)
+            + COALESCE(tcarrental.CarRental,0) + COALESCE(taxicost.Taxi_Cost,0) as "Total Cost"
+        FROM userproc05092023_1 e
         JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-        Join travelrequest t ON t.user_id= e.employee_id
+        Join travelrequest t on t.user_id= e.employee_id
         Left Join ( select request_id,sum(estimated_cost) as estimated_cost from hotel group by request_id)
-                h ON h.request_id = t.request_id
-        Left Join transport trans ON trans.request_id = t.request_id 
+                h on h.request_id = t.request_id
+        Left Join (select Distinct request_id from transport) trans on trans.request_id = t.request_id 
             and  trans.request_id = h.request_id
-        Left Join ( select transport,sum(estimated_cost) as estimated_cost from transporttripmapping group by transport) 
-                tmap ON tmap.transport = trans.id
+        Left Join ( select t.request_id,sum(tmap.estimated_cost) as "Flight_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'flight' group by t.request_id) 
+                    tmap on tmap.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "Bus_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'bus' group by t.request_id) tbus
+                    on tbus.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "Train_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'train' group by t.request_id) ttrain
+                    on ttrain.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "CarRental"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'carRental' group by t.request_id) tcarrental
+                    on tcarrental.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "Taxi_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'taxi' group by t.request_id) taxicost
+                    on taxicost.request_id = t.request_id
         WHERE t.request_id = ?
     """
+
     result = cursor.execute(query, (request_id,)).fetchone()
-
-    # if not result:
-    #     return {
-    #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-    #         "responseMessage": "RequestId is Invalid"
-    #     }
-
+    if not result:
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "RequestId is Invalid"
+        }
     print("result: ", result)
+    detail_data = [
+        {
+            "expenseType": "Cash In Advance",
+            "amount": result[8]
+        },
+        {
+            "expenseType": "Estimate Cost",
+            "amount": result[9]
+        },
+        {
+            "expenseType": "Air Fare",
+            "amount": result[10]
+        },
+        {
+            "expenseType": "Bus Fare",
+            "amount": result[11]
+        },
+        {
+            "expenseType": "Train Fare",
+            "amount": result[12]
+        },
+        {
+            "expenseType": "Car Rental",
+            "amount": result[13]
+        },
+        {
+            "expenseType": "Taxi Fare",
+            "amount": result[14]
+        },
+        {
+            "expenseType": "Total Cost",
+            "amount": result[15]
+        }
+    ]
+
     return {
-        "responseCode": 200,
-        "responseMessage": "Checked Ji!!!"
+        "requestId": result[0],
+        "requestName": result[1],
+        "startDate": result[2],
+        "requestPolicy": result[3],
+        "employeeFirstName": result[4],
+        "endDate": result[5],
+        "employeeId": result[6],
+        "status": result[7],
+        "data": detail_data,
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Request Detail "
     }
 
 

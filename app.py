@@ -1366,7 +1366,7 @@ def request_detail():
             "amount": result[8]
         },
         {
-            "expenseType": "Estimate Cost",
+            "expenseType": "Hotel Fare",
             "amount": result[9]
         },
         {
@@ -1389,10 +1389,6 @@ def request_detail():
             "expenseType": "Taxi Fare",
             "amount": result[14]
         },
-        {
-            "expenseType": "Total Cost",
-            "amount": result[15]
-        }
     ]
 
     return {
@@ -1404,6 +1400,7 @@ def request_detail():
         "endDate": result[5],
         "employeeId": result[6],
         "status": result[7],
+        "totalCost": result[15],
         "data": detail_data,
         "responseCode": http_status_codes.HTTP_200_OK,
         "responseMessage": "Request Detail "

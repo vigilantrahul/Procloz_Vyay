@@ -1737,31 +1737,67 @@ def travel_request_count():
 
         # Condition of the Open Request:
         query = """
-                SELECT
-                    COUNT(*) AS total_requests,
-                    SUM(CASE WHEN t.status IN ('initiated', 'rejected') THEN 1 ELSE 0 END) AS initiated_or_rejected_requests,
-                    SUM(CASE WHEN t.status = 'submitted' THEN 1 ELSE 0 END) AS submitted_requests
-                FROM
-                    userproc05092023_1 e
-                JOIN
-                    userproc05092023_1 m ON e.manager_id = m.employee_id
-                JOIN
-                    travelrequest t ON t.user_id = e.employee_id
-                WHERE
-                    e.employee_id = ? OR e.manager_id = ?;
-            """
-        cursor.execute(query, (employeeId, employeeId,))
-        requests = cursor.fetchone()
-        total_requests, initiated_or_rejected_requests, submitted_requests = requests
+            Declare @employee_id varchar(100)
+            set @employee_id=?
+             
+            select 'Open Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('initiated', 'rejected') then 1 else 0 end),0) as number_of_request 
+            FROM userproc05092023_1 ee
+            Join travelrequest on  travelrequest.user_id = ee.employee_id 
+            where ee.employee_id = @employee_id
+             
+            UNION ALL
+            --getting pending request
+            select 'Pending Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('submitted') then 1 else 0 end),0) as number_of_request  
+            FROM userproc05092023_1 ee
+            Join travelrequest on  travelrequest.user_id = ee.employee_id 
+            where ee.employee_id = @employee_id
+             
+             
+            UNION ALL
+            --getting manager to be approved request
+            select 'To Be Approved Request' as request_type,
+            COALESCE(sum(case when ee.user_type=1 and travelrequest.status in ('submitted') then 1 else 0 end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ee.employee_id = @employee_id OR ee.manager_id = @employee_id
+             
+            UNION ALL
+            --Manager Total Request Data
+            select 'Total Request' as request_type,
+            COALESCE(sum(case 
+                            when (ee.user_type=2 and travelrequest.status in ('rejected','submitted','approved')) OR
+                            (ee.user_type=1 and travelrequest.status in ('rejected','submitted','approved')) Then 1
+                            else 0
+                            end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ( ee.user_type = 1 and ee.employee_id = @employee_id )  or  ( ee.user_type = 2 and (ee.employee_id = @employee_id or ee.manager_id = @employee_id
+            or  ee.manager_id IN (SELECT employee_id FROM userproc05092023_1 WHERE manager_id = @employee_id)))
+        """
+        cursor.execute(query, (employeeId, ))
+        requests = cursor.fetchall()
+
+        arr = []
+        for counts in requests:
+            arr.append(counts[1])
+
+        if len(arr):
+            data = {
+                "openRequest": arr[0],
+                "pendingRequest": arr[1],
+                "toBeApprovedRequest": arr[2],
+                "totalRequest": arr[3]
+            }
+        else:
+            data = {}
 
         # Create a response dictionary
         response = {
             'responseCode': 200,
-            'data': {
-                'totalRequests': total_requests,
-                'openRequests': initiated_or_rejected_requests,
-                'pendingRequest': submitted_requests
-            }
+            'data': data
         }
         return response
     except Exception as err:

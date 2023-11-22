@@ -1469,7 +1469,7 @@ def request_submit():
                 "responseMessage": "Something Went Wrong!!!"
             }
         email_id = email_id[0]
-        # email_id = "vmukul99@gmail.com"
+
         sender_email = "noreply@vyay.tech"
         msg = Message('Request for Approval!!', sender=sender_email, recipients=[email_id])
         msg.body = f"""
@@ -1777,7 +1777,7 @@ def travel_request_count():
             where ( ee.user_type = 1 and ee.employee_id = @employee_id )  or  ( ee.user_type = 2 and (ee.employee_id = @employee_id or ee.manager_id = @employee_id
             or  ee.manager_id IN (SELECT employee_id FROM userproc05092023_1 WHERE manager_id = @employee_id)))
         """
-        cursor.execute(query, (employeeId, ))
+        cursor.execute(query, (employeeId,))
         requests = cursor.fetchall()
 
         arr = []
@@ -2141,16 +2141,61 @@ def get_profile():
     })
 
 
-@app.route('/need-help', methods=['GET'])
+@app.route('/need-help', methods=['GET', 'POST'])
+# @jwt_required()
 def need_help():
+    if request.method == 'GET':
+        try:
+            query = "select * from needhelp"
+            need_help_data = cursor.execute(query).fetchall()
+            task_list = [{'Question': ques.question, 'Answer': ques.answer} for ques in need_help_data]
+            return {
+                "data": task_list,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Questions Fetched Successfully"
+            }
+        except Exception as err:
+            return {
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong !!!",
+                "reason": str(err)
+            }
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            request_message = data.get('requestMessage')
+            sender_email = data.get('employeeEmail')
+
+            receiver_email = "mavrider007@gmail.com"
+            msg = Message('', sender=sender_email, recipients=[receiver_email])
+            msg.body = request_message
+            mail.send(msg)
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Request Submitted Successfully"
+            }
+        except Exception as err:
+            return {
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong !!!",
+                "reason": str(err)
+            }
+
+
+@app.route('/get-bulletin', methods=['GET'])
+@jwt_required()
+def get_notes():
     try:
-        query = "select * from needhelp"
-        need_help_data = cursor.execute(query).fetchall()
-        task_list = [{'Question': ques.question, 'Answer': ques.answer} for ques in need_help_data]
+        organization_id = request.headers.get('organization')
+        query = "select bulletin_note from organization Where company_id=?"
+        bulletin_data = cursor.execute(query, (organization_id, )).fetchone()
+
         return {
-            "data": task_list,
             "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Questions Fetched Successfully"
+            "data": {
+                "bulletinNote": bulletin_data[0]
+            },
+            "responseMessage": "Bulletin Note Fetched Successfully."
         }
     except Exception as err:
         return {

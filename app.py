@@ -2170,12 +2170,12 @@ def need_help():
             it_desk_email = "mavrider007@gmail.com"
 
             # Email to IT Support:
-            msg = Message('', sender=sender_email, recipients=[it_desk_email])
+            msg = Message('Tickets Raised ', sender=sender_email, recipients=[it_desk_email])
             msg.body = request_message
             mail.send(msg)
 
             # Email to Employee:
-            msg = Message('', sender=sender_email, recipients=[employee_email])
+            msg = Message('Request Sent', sender=sender_email, recipients=[employee_email])
             msg.body = f"""
                 Hi,
                 

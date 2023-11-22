@@ -1727,6 +1727,68 @@ def request_paid():
         })
 
 
+@app.route('/request-send-back', methods=['POST'])
+@jwt_required()
+def request_send_back():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+        comment = data.get("comment")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'submitted'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Submitted to Send Back!!"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        if status != "rejected":
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found"
+            }
+
+        query = f"UPDATE travelrequest SET status=?, comment_from_manager=? WHERE request_id=?"
+        cursor.execute(query, (status, comment, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Sent Back Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
 # ------------------------------- Dashboard API -------------------------------
 # Total Counts of Travel Requests
 @app.route('/request-count', methods=["GET"])

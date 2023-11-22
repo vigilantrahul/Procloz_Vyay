@@ -2164,12 +2164,29 @@ def need_help():
         try:
             data = request.get_json()
             request_message = data.get('requestMessage')
-            sender_email = data.get('employeeEmail')
 
-            receiver_email = "mavrider007@gmail.com"
-            msg = Message('', sender=sender_email, recipients=[receiver_email])
+            sender_email = "noreply@vyay.tech"
+            employee_email = data.get('employeeEmail')
+            it_desk_email = "mavrider007@gmail.com"
+
+            # Email to IT Support:
+            msg = Message('', sender=sender_email, recipients=[it_desk_email])
             msg.body = request_message
             mail.send(msg)
+
+            # Email to Employee:
+            msg = Message('', sender=sender_email, recipients=[employee_email])
+            msg.body = f"""
+                Hi,
+                
+                Thank you for submitting your request.
+                
+                Your Request has been Submitted, Support Team will get back to you soon.
+                Thanks,
+                Vyay Team
+            """
+            mail.send(msg)
+
             return {
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Request Submitted Successfully"

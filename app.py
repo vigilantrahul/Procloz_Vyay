@@ -10,7 +10,7 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
-from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_request_data, cancel_request_data
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, clear_perdiem_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -1234,18 +1234,37 @@ def other_expense():
 @app.route('/clear-data', methods=['POST'])
 @jwt_required()
 def clear_data():
-    data = request.get_json()
-    request_id = data["requestId"]
-    transport_type = data["transportType"]
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+        request_type = data["requestType"]
+        transport_type = ""
 
-    # Validation of None Value
-    if transport_type is None:
+        # Validation of None Value
+        if request_type is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> requestType not found"
+            }
+
+        # Checking the Condition for the Request Type
+        if request_type.lower() == "hotel":
+            result = clear_hotel_data(cursor, connection, request_id)
+            return result
+        elif request_type.lower() == "perdiem":
+            result = clear_perdiem_data(cursor, connection, request_id)
+            return result
+        else:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> Invalid request_type Found"
+            }
+    except Exception as err:
         return {
-            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-            "responseMessage": "Choose Valid Transport Type"
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
         }
-    result = clear_request_data(cursor, request_id, transport_type)
-    return result
 
 
 # 9. Canceling Request Data API

@@ -1,28 +1,22 @@
 from constants import http_status_codes, custom_status_codes
 
 
-def cancel_request_data(cursor, request_id):
-    try:
-        # Condition is that request_id data available in the transport table regarding
-        query = "DELETE FROM travelrequest WHERE request_id = ?"
-        cursor.execute(query, (request_id, ))
-        return {
-            "responseMessage": "Request Cancelled Successfully",
-            "responseCode": http_status_codes.HTTP_200_OK
-        }
-    except Exception as err:
-        return {
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Something Went Wrong",
-            "reason": str(err)
-        }
-
-
-def clear_request_data(cursor, request_id, transport_type):
-
+def clear_hotel_data(cursor, connection, request_id):
     # Condition is that request_id data available in the transport table regarding
-    query = "DELETE FROM transport WHERE request_id = ? and transport_type=?"
-    cursor.execute(query, (request_id, transport_type, ))
+    query = "DELETE FROM hotel WHERE request_id=?"
+    cursor.execute(query, (request_id, ))
+    connection.commit()
+    return {
+        "responseMessage": "Data Cleared Successfully",
+        "responseCode": http_status_codes.HTTP_200_OK
+    }
+
+
+def clear_perdiem_data(cursor, connection, request_id):
+    # Condition is that request_id data available in the transport table regarding
+    query = "DELETE FROM perdiem WHERE request_id=?"
+    cursor.execute(query, (request_id, ))
+    connection.commit()
     return {
         "responseMessage": "Data Cleared Successfully",
         "responseCode": http_status_codes.HTTP_200_OK

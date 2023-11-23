@@ -10,8 +10,7 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
-from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_request_data, \
-    cancel_request_data
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_request_data, cancel_request_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -392,83 +391,61 @@ def change_password():
             # Return the custom error response with a 500 status code
             return jsonify(custom_error_response)
 
-        try:
-            data = request.get_json()
-            # required Fields Validation
-            if len(data) == 0:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Required Fields are Empty"
-                }
-        except Exception as err1:
+        data = request.get_json()
+        # required Fields Validation
+        if len(data) == 0:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        req_old_password = data.get('oldPassword', '')
+        new_password = data.get('newPassword', '')
+
+        # Validating the Required Fields
+        if req_old_password == '' or new_password == '':
             return {
                 "responseCode": 500,
-                "responseMessage": "Something Went Wrong 1",
-                "error": str(err1)
+                "responseMessage": "Required Field is Empty"
             }
 
-        try:
-            req_old_password = data.get('oldPassword', '')
-            new_password = data.get('newPassword', '')
+        email = data.get("emailId")
+        print()
+        query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
+        cursor.execute(query, email)
+        result = cursor.fetchone()
 
-            # Validating the Required Fields
-            if req_old_password == '' or new_password == '':
-                return {
-                    "responseCode": 500,
-                    "responseMessage": "Required Field is Empty"
-                }
-
-            # # Validating the Session Variable
-            # if 'emailId' not in session:
-            #     session_response = {
-            #         "responseMessage": "Session Expired !",
-            #         "responseCode": custom_status_codes.expired_session
-            #     }
-            #     return jsonify(session_response)
-
-            # email = session.get("emailId")
-            email = data.get("emailId")
-            query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
-            cursor.execute(query, email)
-            result = cursor.fetchone()
-            if result is not None:
-                old_password, is_new = result
-        except Exception as err2:
+        if result is None:
             return {
-                "responseCode": 500,
-                "responseMessage": "Something Went 2",
-                "error": str(err2)
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Check the Email ID it's Invalid !!!"
             }
 
-        try:
-            # Validation of the Old Password
-            if old_password != req_old_password:
-                return jsonify({
-                    "responseMessage": "Invalid old Password Found",
-                    "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
-                })
+        old_password, is_new = result
 
-            # To Check is the User New or Old
-            if is_new == 1:
-                # Update Password
-                query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
-            else:
-                # Update Password
-                query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
-            cursor.execute(query, (new_password, email))
-            connection.commit()
+        # Validation of the Old Password
+        if old_password.casefold() != req_old_password.casefold():
+            return jsonify({
+                "responseMessage": "Invalid old Password Found",
+                "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
+            })
 
-            response_data = {
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Password Changed Successfully"
-            }
-            return jsonify(response_data)
-        except Exception as err3:
-            return {
-                "responseCode": 500,
-                "responseMessage": "Something Went Wrong 3",
-                "error": str(err3)
-            }
+        # To Check is the User New or Old
+        if is_new == 1:
+            # Update Password
+            query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
+        else:
+            # Update Password
+            query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
+        cursor.execute(query, (new_password, email))
+        connection.commit()
+
+        response_data = {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Password Changed Successfully"
+        }
+        return jsonify(response_data)
+
     except Exception as e:
         return {
             "responseCode": 500,
@@ -1278,19 +1255,13 @@ def cancel_request():
     try:
         data = request.get_json()
         request_id = data["requestId"]
-        print("request_id: ", request_id)
 
-        # request_id = 'DRYS151123163044'
-        query = """
-            DELETE tr
-            From travelrequest tr
-            join hotel h on tr.request_id = h.request_id
-            join transport t on t.request_id = tr.request_id
-            join transporttripmapping tmap on tmap.transport = t.id
-            join perdiem pr on tr.request_id = pr.request_id
-            where tr.request_id = ?
+        query = f"""
+            Delete from travelrequest where travelrequest.request_id=?
         """
+
         cursor.execute(query, (request_id,))
+        connection.commit()
 
         return {
             "responseMessage": "Request Cancelled Successfully",

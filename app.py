@@ -1524,12 +1524,13 @@ def request_approved():
 
         request_id = data.get("requestId")
         status = data.get("status")
+        comment = data.get("comment")
 
         # Validating request_id in travel Request Table:
         query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'submitted'"
         cursor.execute(query, (request_id,))
         result = cursor.fetchone()
-        print("result: ", result)
+
         if result is None:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -1537,10 +1538,14 @@ def request_approved():
             }
 
         # Validation of the Value getting in the status Variable:
-        # ...
+        if status != "approved":
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found !!"
+            }
 
-        query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
-        cursor.execute(query, (status, request_id))
+        query = f"UPDATE travelrequest SET status=?, comment_from_manager=? WHERE request_id=?"
+        cursor.execute(query, (status, comment, request_id))
         connection.commit()
 
         return {

@@ -10,7 +10,7 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
-from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, clear_perdiem_data
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, clear_perdiem_data, clear_transport_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -1238,8 +1238,7 @@ def clear_data():
         data = request.get_json()
         request_id = data["requestId"]
         request_type = data["requestType"]
-        transport_type = ""
-
+        transport_type = data["transportType"]
         # Validation of None Value
         if request_type is None:
             return {
@@ -1253,6 +1252,9 @@ def clear_data():
             return result
         elif request_type.lower() == "perdiem":
             result = clear_perdiem_data(cursor, connection, request_id)
+            return result
+        elif request_type.lower() == "transport":
+            result = clear_transport_data(cursor, connection, request_id, transport_type)
             return result
         else:
             return {
@@ -1841,6 +1843,7 @@ def travel_request_count():
         for counts in requests:
             arr.append(counts[1])
 
+        # Code to check if data exists or not!
         if len(arr):
             data = {
                 "openRequest": arr[0],

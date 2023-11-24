@@ -13,9 +13,20 @@ def clear_hotel_data(cursor, connection, request_id):
 
 
 def clear_perdiem_data(cursor, connection, request_id):
+
     # Condition is that request_id data available in the transport table regarding
     query = "DELETE FROM perdiem WHERE request_id=?"
     cursor.execute(query, (request_id, ))
+    connection.commit()
+    return {
+        "responseMessage": "Data Cleared Successfully",
+        "responseCode": http_status_codes.HTTP_200_OK
+    }
+
+
+def clear_transport_data(cursor, connection, request_id, transport_type):
+    query = "DELETE FROM transport Where request_id=? and transport_type=?"
+    cursor.execute(query, (request_id, transport_type, ))
     connection.commit()
     return {
         "responseMessage": "Data Cleared Successfully",

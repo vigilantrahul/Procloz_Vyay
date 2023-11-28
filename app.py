@@ -1238,7 +1238,17 @@ def clear_data():
         data = request.get_json()
         request_id = data["requestId"]
         request_type = data["requestType"]
-        transport_type = data["transportType"]
+        if request_type == "transport":
+            if "transportType" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Transport Type is a Required Field"
+                }
+        if "transportType" in data:
+            transport_type = data["transportType"]
+        else:
+            transport_type = None
+
         # Validation of None Value
         if request_type is None:
             return {
@@ -1476,7 +1486,6 @@ def request_submit():
         """
         mail.send(msg)
         # Update the Notification in the Table Notification
-        # Send Email to the Manager
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -1540,6 +1549,11 @@ def request_approved():
         cursor.execute(query, (status, comment, request_id))
         connection.commit()
 
+        # Check is there Cash Advance in the Travel request
+        # Send Email to the User from Whom we got the request
+        # Send Email to the Respective Expense Admin who belongs to that User.
+        # Update in the Table of the Notification.
+
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Request Approved Successfully"
@@ -1591,7 +1605,11 @@ def request_withdrawn():
             }
 
         # Validation of the Value getting in the status Variable:
-        # ...
+        if status != 'initiated':
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found"
+            }
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
@@ -1648,11 +1666,19 @@ def request_sent_for_payment():
             }
 
         # Validation of the Value getting in the status Variable:
-        # ...
+        if status != "send for payment":
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found"
+            }
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
         connection.commit()
+
+        # Send Email to the User From Whom Request Sent.
+        # Send Email to the Finance Person for this Request.
+        # Update this record in the Notification Table.
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,

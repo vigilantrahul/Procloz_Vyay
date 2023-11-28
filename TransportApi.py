@@ -94,8 +94,16 @@ def train_data(cursor, connection, request_id, transports, employee_id):
         # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
         trips = None
         trip_type = None
-
     transport_type = transports['transportType']
+
+    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    cursor.execute(query, (request_id, transport_type,))
+    result = cursor.fetchone()
+
+    # Condition is that request_id data available in the transport table
+    if result:
+        query = "DELETE FROM transport where request_id=?"
+        cursor.execute(query, (request_id,))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
@@ -140,6 +148,15 @@ def bus_data(cursor, connection, request_id, transports, employee_id):
 
     transport_type = transports['transportType']
 
+    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    cursor.execute(query, (request_id, transport_type,))
+    result = cursor.fetchone()
+
+    # Condition is that request_id data available in the transport table
+    if result:
+        query = "DELETE FROM transport where request_id=?"
+        cursor.execute(query, (request_id,))
+
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
     cursor.execute(sql_query, (request_id, transport_type, trip_type))
@@ -180,6 +197,15 @@ def taxi_data(cursor, connection, data):
     estimate_cost = data["estimateCost"]
     trip_type = None
 
+    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    cursor.execute(query, (request_id, transport_type,))
+    result = cursor.fetchone()
+
+    # Condition is that request_id data available in the transport table
+    if result:
+        query = "DELETE FROM transport where request_id=?"
+        cursor.execute(query, (request_id,))
+
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
     cursor.execute(sql_query, (request_id, transport_type, trip_type))
@@ -211,6 +237,15 @@ def carrental_data(cursor, connection, data):
     from_date = data["startDate"]
     to_date = data["endDate"]
     estimate_cost = data["estimateCost"]
+
+    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    cursor.execute(query, (request_id, transport_type,))
+    result = cursor.fetchone()
+
+    # Condition is that request_id data available in the transport table
+    if result:
+        query = "DELETE FROM transport where request_id=?"
+        cursor.execute(query, (request_id,))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"

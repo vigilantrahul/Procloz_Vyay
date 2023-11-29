@@ -1456,6 +1456,7 @@ def request_submit():
                 "responseMessage": "Request ID Not Exists!!"
             }
         user_id = result[0]
+        print("User Id: ", user_id)
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
@@ -1464,7 +1465,7 @@ def request_submit():
         # get the Manager's Email of the user_id
         email_query = """
             SELECT
-                m.email_id AS manager_email
+                m.email_id AS manager_email,
                 m.employee_id
             FROM
                 userproc05092023_1 e
@@ -1474,12 +1475,16 @@ def request_submit():
                 e.employee_id = ?
         """
         manager_data = cursor.execute(email_query, (user_id,)).fetchone()
+        print("Manager Data: ", manager_data)
         if not manager_data:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Something Went Wrong!!!"
             }
         email_id, manager_id = manager_data
+        print("Email_ID: ", email_id)
+        print("Manager_ID: ", manager_id)
+
         employee_message = f"""
             Hi,
             
@@ -2426,7 +2431,7 @@ def notification():
         query = "SELECT * from notification WHERE employee_id=?"
         cursor.execute(query, (user_id, ))
         notification_data = cursor.fetchall()
-        notification_list = [{'id': notify.id, 'request_id': notify.request_id, "user_id": notify.user_id,
+        notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
                               "created_date": notify.created_at, "current_status": notify.current_status,
                               "message": notify.message} for notify in notification_data]
         return {

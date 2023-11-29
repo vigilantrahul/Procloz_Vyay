@@ -2427,7 +2427,7 @@ def get_notes():
 def notification():
     if request.method == 'GET':
         user_id = request.headers.get('userId')
-        print(user_id)
+
         query = "SELECT * from notification WHERE employee_id=?"
         cursor.execute(query, (user_id,))
         notification_data = cursor.fetchall()

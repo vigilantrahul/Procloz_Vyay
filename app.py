@@ -2,7 +2,7 @@ import os
 import random
 import sys
 import time
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session
@@ -10,7 +10,8 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
-from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, clear_perdiem_data, clear_transport_data
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
+    clear_perdiem_data, clear_transport_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -1437,6 +1438,13 @@ def request_submit():
         request_id = data.get("requestId")
         status = data.get("status")
 
+        # validation for status:
+        if status != 'submitted':
+            return {
+                'responseCode': http_status_codes.HTTP_400_BAD_REQUEST,
+                'responseMessage': 'Invalid Status Found'
+            }
+
         # Validating request_id in travel Request Table:
         query = "SELECT TOP 1 user_id FROM travelrequest WHERE request_id = ?"
         cursor.execute(query, (request_id,))
@@ -1457,6 +1465,7 @@ def request_submit():
         email_query = """
             SELECT
                 m.email_id AS manager_email
+                m.employee_id
             FROM
                 userproc05092023_1 e
             JOIN
@@ -1464,28 +1473,55 @@ def request_submit():
             WHERE
                 e.employee_id = ?
         """
-        email_id = cursor.execute(email_query, (user_id,)).fetchone()
-        if not email_id:
+        manager_data = cursor.execute(email_query, (user_id,)).fetchone()
+        if not manager_data:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Something Went Wrong!!!"
             }
-        email_id = email_id[0]
-
+        email_id, manager_id = manager_data
+        employee_message = f"""
+            Hi,
+            
+            Your Request Has been Submitted Successfully!!, You can withdraw it from "Pending Request" until it gets approved from your Manager.
+            You can login to VYAY to review the request.
+            
+            Thanks,
+            Team VYAY
+        """
+        manager_message = f"""
+            Hi,
+ 
+            There is one request from {user_id} for Approval!!, Please review and take a valid Action.
+            You can login to VYAY to review the request using ..
+             
+            Thanks,
+            Team VYAY
+        """
         sender_email = "noreply@vyay.tech"
         msg = Message('Request for Approval!!', sender=sender_email, recipients=[email_id])
         msg.body = f"""
             Hi,
  
             There is one request from {user_id} for Approval!!, Please review and take a valid Action.
-             
             You can login to VYAY to review the request using ..
              
             Thanks,
             Team VYAY
         """
         mail.send(msg)
-        # Update the Notification in the Table Notification
+
+        # Update the Notification in the Table Notification (Notification for Employee)
+        query = "Insert into Notification (request_id, employee_id, created_at, current_status, message) Values (?,?,?,?,?)"
+        current_date = date.today()
+
+        # For Employee:
+        cursor.execute(query, (request_id, user_id, current_date, 1, employee_message))
+        connection.commit()
+
+        # For Manager:
+        cursor.execute(query, (request_id, manager_id, current_date, 1, manager_message))
+        connection.commit()
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -1528,7 +1564,7 @@ def request_approved():
         comment = data.get("comment")
 
         # Validating request_id in travel Request Table:
-        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'submitted'"
+        query = "SELECT cash_in_advance, user_id FROM travelrequest WHERE request_id = ? AND status = 'submitted'"
         cursor.execute(query, (request_id,))
         result = cursor.fetchone()
 
@@ -1537,6 +1573,7 @@ def request_approved():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Request should be Submitted to get Approve!!"
             }
+        adv_cash, user_id = result
 
         # Validation of the Value getting in the status Variable:
         if status != "approved":
@@ -1549,10 +1586,70 @@ def request_approved():
         cursor.execute(query, (status, comment, request_id))
         connection.commit()
 
-        # Check is there Cash Advance in the Travel request
+        # get the Manager's Email of the user_id
+        email_query = """
+            SELECT
+                email_id,
+                expense_administrator_email
+            FROM
+                userproc05092023_1
+            WHERE
+                employee_id=?
+        """
+        user_data = cursor.execute(email_query, (user_id,)).fetchone()
+
+        if not user_data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong!!!"
+            }
+        email_id, exp_admin_email = user_data
+
+        # Check is there Cash Advance in the Travel request (DONE)
+        # Insert Query in the Table of the Notification:
+        query = """INSERT INTO notification(
+                        request_id,
+                        employee_id,
+                        created_at,
+                        current_status
+                   ) 
+                   Values (?,?,?,?)
+                """
+        current_date = date.today()
+
         # Send Email to the User from Whom we got the request
-        # Send Email to the Respective Expense Admin who belongs to that User.
-        # Update in the Table of the Notification.
+        sender_email = "noreply@vyay.tech"
+        msg = Message('Request Accepted Successfully', sender=sender_email, recipients=[email_id])
+        msg.body = f"""
+                        Hi,
+
+                        Thanks for having Patience, Your Request has been Approved Successfully.
+                        You can login to VYAY to review the request using ..
+
+                        Thanks,
+                        Team VYAY
+                    """
+        mail.send(msg)
+        cursor.execute(query, (request_id, user_id, current_date, "approved"))
+        connection.commit()
+
+        # Checking for adv_cash and sending mail:
+        if adv_cash != 0:
+            # Send Email to the Respective Expense Admin who belongs to that User.
+            sender_email = "noreply@vyay.tech"
+            msg = Message('Request for send for Payment!!', sender=sender_email, recipients=[email_id])
+            msg.body = f"""
+                        Hi,
+    
+                        There is one request from {user_id} for Approval!!, Please review and take a valid Action.
+                        You can login to VYAY to review the request using ..
+    
+                        Thanks,
+                        Team VYAY
+                    """
+            mail.send(msg)
+            cursor.execute(query, (request_id, user_id, current_date, "approved"))
+            connection.commit()
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -1655,7 +1752,7 @@ def request_sent_for_payment():
         status = data.get("status")
 
         # Validating request_id in travel Request Table:
-        query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'approved'"
+        query = "SELECT user_id FROM travelrequest WHERE request_id = ? AND status = 'approved'"
         cursor.execute(query, (request_id,))
         result = cursor.fetchone()
 
@@ -1678,7 +1775,19 @@ def request_sent_for_payment():
 
         # Send Email to the User From Whom Request Sent.
         # Send Email to the Finance Person for this Request.
-        # Update this record in the Notification Table.
+        # Update this record in the Notification Table:
+        # Update in the Table of the Notification:
+        # query = """INSERT INTO notification(
+        #                 request_id,
+        #                 employee_id,
+        #                 created_at,
+        #                 current_status
+        #            )
+        #            Values (?,?,?,?)
+        #         """
+        # current_date = date.today()
+        # cursor.execute(query, (request_id, user_id, current_date, "approved"))
+        # connection.commit()
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -2291,7 +2400,7 @@ def get_notes():
     try:
         organization_id = request.headers.get('organization')
         query = "select bulletin_note from organization Where company_id=?"
-        bulletin_data = cursor.execute(query, (organization_id, )).fetchone()
+        bulletin_data = cursor.execute(query, (organization_id,)).fetchone()
 
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
@@ -2305,6 +2414,25 @@ def get_notes():
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "responseMessage": "Something Went Wrong !!!",
             "reason": str(err)
+        }
+
+
+@app.route('/notification', methods=['GET'])
+@jwt_required()
+def notification():
+    if request.method == 'GET':
+        user_id = request.headers.get('userId')
+        print(user_id)
+        query = "SELECT * from notification WHERE employee_id=?"
+        cursor.execute(query, (user_id, ))
+        notification_data = cursor.fetchall()
+        notification_list = [{'id': notify.id, 'request_id': notify.request_id, "user_id": notify.user_id,
+                              "created_date": notify.created_at, "current_status": notify.current_status,
+                              "message": notify.message} for notify in notification_data]
+        return {
+            'responseCode': http_status_codes.HTTP_200_OK,
+            'responseMessage': 'Notification fetched Successfully',
+            'data': notification_list
         }
 
 

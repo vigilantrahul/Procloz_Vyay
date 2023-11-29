@@ -2429,15 +2429,20 @@ def notification():
         user_id = request.headers.get('userId')
         print(user_id)
         query = "SELECT * from notification WHERE employee_id=?"
-        cursor.execute(query, (user_id, ))
+        cursor.execute(query, (user_id,))
         notification_data = cursor.fetchall()
         notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
                               "created_date": notify.created_at, "current_status": notify.current_status,
                               "message": notify.message} for notify in notification_data]
+
+        notification_query = "SELECT COUNT(*) as Notification_Count FROM notification WHERE employee_id = ? AND current_status = 1;"
+        result = cursor.execute(notification_query, (user_id,)).fetchone()
+        notification_count = result[0] if result else 0
         return {
             'responseCode': http_status_codes.HTTP_200_OK,
             'responseMessage': 'Notification fetched Successfully',
-            'data': notification_list
+            'data': notification_list,
+            'count': notification_count
         }
 
 

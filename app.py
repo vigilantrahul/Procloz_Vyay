@@ -1410,6 +1410,145 @@ def request_detail():
     }
 
 
+# ------------------------------- Expense Initiating API -------------------------------
+# 1. Expense Request Common Data Insertion:
+@app.route('/expense-request', methods=['GET', 'POST'])
+@jwt_required()
+def expense_initiate():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == 'GET':
+        try:
+            request_id = request.headers.get('requestId')
+
+            # Validating request_id in travel Request Table:
+            query = "SELECT request_id, request_name, request_policy, start_date, end_date, purpose, status FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, (request_id,))
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+            else:
+                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose',
+                                'status']
+                response_data = dict(zip(column_names, result))
+                response_data = {
+                    "requestId": response_data["request_id"],
+                    "requestName": response_data["request_name"],
+                    "requestPolicy": response_data["request_policy"],
+                    "startDate": response_data["start_date"],
+                    "endDate": response_data["end_date"],
+                    "purpose": response_data["purpose"],
+                    "status": response_data["status"]
+                }
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseData": response_data,
+                    'responseMessage': 'Travel Request Fetched Successfully'
+                }
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong While Fetching Record",
+                "reason": str(err)
+            })
+
+    elif request.method == 'POST':
+        # Saving the Request Data
+        try:
+            data = request.get_json()
+            if "organization" not in data or "employeeId" not in data:
+                return {
+                    "responseCode": 400,
+                    "responseMessage": "(DEBUG) - Need Organization ID and Employee ID"
+                }
+            organization = data.get('organization')
+            employee_id = data.get('employeeId')
+
+            # Validating the Organization_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM organization WHERE company_id = ?"
+            cursor.execute(query, organization)
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Organization ID is Invalid!!"
+                }
+
+            # Validation of the required Fields:
+            if "requestId" not in data or "requestName" not in data or "requestPolicy" not in data or "startDate" not in data or "endDate" not in data or "purpose" not in data:
+                required_data = {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields Empty"
+                }
+                return jsonify(required_data)
+
+            employee_id = employee_id
+            request_id = data.get('requestId')
+            expense_request_id = data.get('expenseRequestId')
+            request_name = data.get('requestName')
+            request_policy = data.get('requestPolicy')
+            purpose = data.get('purpose')
+            start_date = data.get('startDate')
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = data.get('endDate')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            status = data.get('status')
+
+            # Validating the Request_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+
+            # Validation for Request ID
+            if result is None:
+                return {
+                    'responseCode': http_status_codes.HTTP_400_BAD_REQUEST,
+                    'responseMessage': 'Invalid Request ID Found !!'
+                }
+
+            # Validating the Request_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM expenserequest WHERE expense_request_id = ?"
+            cursor.execute(query, request_id)
+            expense_result = cursor.fetchone()
+
+            # Code for the Updating Request Data on that particular request id
+            if expense_result is not None:
+                sql_query = "UPDATE expenserequest SET , user_id = ?, request_id=?, request_name = ?, request_policy = ?, start_date = ?, end_date = ?, purpose = ?, status = ? WHERE expense_request_id = ?"
+                cursor.execute(sql_query, employee_id, request_id, request_name, request_policy, start_date, end_date,
+                               purpose, status, expense_request_id)
+                connection.commit()
+
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Request Data Updated Successfully!!"
+                }
+
+            # Query To Insert Data in the Request Table:
+            sql_query = "INSERT INTO travelrequest (organization, user_id, request_id, request_name, request_policy, start_date, end_date, purpose, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            cursor.execute(sql_query, organization, employee_id, request_id, request_name, request_policy, start_date,
+                           end_date, purpose, status)
+            connection.commit()
+
+            return jsonify({"responseMessage": "Travel Request Saved", "responseCode": http_status_codes.HTTP_200_OK})
+        except Exception as e:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(e)
+            })
+
+
 # ------------------------------- Request Status Update -------------------------------
 
 @app.route('/request-submit', methods=['POST'])
@@ -1456,7 +1595,6 @@ def request_submit():
                 "responseMessage": "Request ID Not Exists!!"
             }
         user_id = result[0]
-        print("User Id: ", user_id)
 
         query = f"UPDATE travelrequest SET status=? WHERE request_id=?"
         cursor.execute(query, (status, request_id))
@@ -1475,15 +1613,12 @@ def request_submit():
                 e.employee_id = ?
         """
         manager_data = cursor.execute(email_query, (user_id,)).fetchone()
-        print("Manager Data: ", manager_data)
         if not manager_data:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Something Went Wrong!!!"
             }
         email_id, manager_id = manager_data
-        print("Email_ID: ", email_id)
-        print("Manager_ID: ", manager_id)
 
         employee_message = f"""
             Hi,
@@ -2426,17 +2561,17 @@ def get_notes():
 @jwt_required()
 def notification():
     if request.method == 'GET':
-        user_id = request.headers.get('userId')
+        employee_id = request.headers.get('employeeId')
 
         query = "SELECT * from notification WHERE employee_id=?"
-        cursor.execute(query, (user_id,))
+        cursor.execute(query, (employee_id,))
         notification_data = cursor.fetchall()
         notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
                               "created_date": notify.created_at, "current_status": notify.current_status,
                               "message": notify.message} for notify in notification_data]
 
         notification_query = "SELECT COUNT(*) as Notification_Count FROM notification WHERE employee_id = ? AND current_status = 1;"
-        result = cursor.execute(notification_query, (user_id,)).fetchone()
+        result = cursor.execute(notification_query, (employee_id,)).fetchone()
         notification_count = result[0] if result else 0
         return {
             'responseCode': http_status_codes.HTTP_200_OK,

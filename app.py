@@ -2073,46 +2073,110 @@ def travel_request_count():
         query = """
             Declare @employee_id varchar(100)
             set @employee_id=?
-             
+            
             select 'Open Request' as request_type,
             COALESCE(sum(case when travelrequest.status in ('initiated', 'rejected') then 1 else 0 end),0) as number_of_request 
             FROM userproc05092023_1 ee
             Join travelrequest on  travelrequest.user_id = ee.employee_id 
             where ee.employee_id = @employee_id
-             
-            UNION ALL
+            
+            
+            UNION All
             --getting pending request
             select 'Pending Request' as request_type,
             COALESCE(sum(case when travelrequest.status in ('submitted') then 1 else 0 end),0) as number_of_request  
             FROM userproc05092023_1 ee
             Join travelrequest on  travelrequest.user_id = ee.employee_id 
             where ee.employee_id = @employee_id
-             
-             
-            UNION ALL
-            --getting manager to be approved request
-            select 'To Be Approved Request' as request_type,
-            COALESCE(sum(case when ee.user_type=1 and travelrequest.status in ('submitted') then 1 else 0 end),0) as number_of_request
+            
+            
+            UNION All
+            Select request_type, sum(number_of_request) as To_be_approved_request
+            from
+            (
+            select 'TO Be Approved Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('submitted') then 1 else 0 end),0) as number_of_request
             FROM userproc05092023_1 ee
             JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
             join travelrequest on travelrequest.user_id = ee.employee_id 
-            where ee.employee_id = @employee_id OR ee.manager_id = @employee_id
-             
-            UNION ALL
-            --Manager Total Request Data
-            select 'Total Request' as request_type,
-            COALESCE(sum(case 
-                            when (ee.user_type=2 and travelrequest.status in ('rejected','submitted','approved')) OR
-                            (ee.user_type=1 and travelrequest.status in ('rejected','submitted','approved')) Then 1
-                            else 0
-                            end),0) as number_of_request
+            where ee.employee_id != @employee_id and ee.manager_id = @employee_id 
+            --OR ee.expense_administrator = @employee_id OR ee.finance_contact_person = @employee_id
+            
+            UNION All
+            --getting manager to be approved request
+            select 'TO Be Approved Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('approved') then 1 else 0 end),0) as number_of_request
             FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
             join travelrequest on travelrequest.user_id = ee.employee_id 
-            where ( ee.user_type = 1 and ee.employee_id = @employee_id )  or  ( ee.user_type = 2 and (ee.employee_id = @employee_id or ee.manager_id = @employee_id
-            or  ee.manager_id IN (SELECT employee_id FROM userproc05092023_1 WHERE manager_id = @employee_id)))
+            where ee.employee_id != @employee_id and ee.expense_administrator = @employee_id
+            
+            UNION All
+            --getting manager to be approved request
+            select 'TO Be Approved Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('send for payment') then 1 else 0 end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ee.employee_id != @employee_id and ee.finance_contact_person = @employee_id 
+            ) as subquery
+            group by request_type
+            
+            
+            --Query for Total Request
+            UNION ALL
+            Select request_type, sum(number_of_request) as To_be_approved_request
+            from
+            (
+            --Employee Flow Query
+            select 'Total Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('initiated', 'rejected','submitted','approved','send for payment','paid') then 1 else 0 end),0) as number_of_request 
+            FROM userproc05092023_1 ee
+            Join travelrequest on  travelrequest.user_id = ee.employee_id 
+            where ee.employee_id = @employee_id
+            
+            UNION ALL
+            --Manager Flow Query for Total To be approved
+            select 'Total Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('submitted') then 1 else 0 end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ee.employee_id != @employee_id and ee.manager_id = @employee_id 
+            --OR ee.expense_administrator = @employee_id OR ee.finance_contact_person = @employee_id
+            
+            UNION All
+            --Expense administrator flow for Total
+            select 'Total Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('approved') then 1 else 0 end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ee.employee_id != @employee_id and ee.expense_administrator = @employee_id
+            
+            UNION All
+            --Finance flow for total query
+            select 'Total Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('send for payment') then 1 else 0 end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ee.employee_id != @employee_id and ee.finance_contact_person = @employee_id
+            
+            UNION All
+            --query for finance
+            select 'Total Request' as request_type,
+            COALESCE(sum(case when travelrequest.status in ('paid') then 1 else 0 end),0) as number_of_request
+            FROM userproc05092023_1 ee
+            JOIN userproc05092023_1 m ON ee.manager_id = m.employee_id
+            join travelrequest on travelrequest.user_id = ee.employee_id 
+            where ee.employee_id != @employee_id and ee.finance_contact_person = @employee_id 
+            ) as subquery
+            group by request_type
         """
         cursor.execute(query, (employeeId,))
         requests = cursor.fetchall()
+        print("requests: ", requests)
 
         arr = []
         for counts in requests:

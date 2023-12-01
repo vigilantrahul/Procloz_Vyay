@@ -2557,29 +2557,53 @@ def get_notes():
         }
 
 
-@app.route('/notification', methods=['GET'])
+@app.route('/notification', methods=['GET', 'POST'])
 @jwt_required()
 def notification():
     if request.method == 'GET':
-        employee_id = request.headers.get('employeeId')
+        try:
+            employee_id = request.headers.get('employeeId')
 
-        query = "SELECT * from notification WHERE employee_id=?"
-        cursor.execute(query, (employee_id,))
-        notification_data = cursor.fetchall()
-        notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
-                              "created_date": notify.created_at, "current_status": notify.current_status,
-                              "message": notify.message} for notify in notification_data]
+            query = "SELECT * from notification WHERE employee_id=?"
+            cursor.execute(query, (employee_id,))
+            notification_data = cursor.fetchall()
+            notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
+                                  "created_date": notify.created_at, "current_status": notify.current_status,
+                                  "message": notify.message} for notify in notification_data]
 
-        notification_query = "SELECT COUNT(*) as Notification_Count FROM notification WHERE employee_id = ? AND current_status = 1;"
-        result = cursor.execute(notification_query, (employee_id,)).fetchone()
-        notification_count = result[0] if result else 0
-        return {
-            'responseCode': http_status_codes.HTTP_200_OK,
-            'responseMessage': 'Notification fetched Successfully',
-            'data': notification_list,
-            'count': notification_count
-        }
+            notification_query = "SELECT COUNT(*) as Notification_Count FROM notification WHERE employee_id = ? AND current_status = 1;"
+            result = cursor.execute(notification_query, (employee_id,)).fetchone()
+            notification_count = result[0] if result else 0
+            return {
+                'responseCode': http_status_codes.HTTP_200_OK,
+                'responseMessage': 'Notification fetched Successfully',
+                'data': notification_list,
+                'count': notification_count
+            }
+        except Exception as err:
+            return {
+                'reason': str(err),
+                'responseCode': http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                'responseMessage': 'Something Went Wrong'
+            }
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            notification_id = data.get('notificationId')
+            query = "Update notification SET current_status=0 where id=?"
+            cursor.execute(query, (notification_id, ))
+            connection.commit()
 
+            return {
+                'responseCode': http_status_codes.HTTP_200_OK,
+                'responseMessage': 'Status Update Successfully'
+            }
+        except Exception as err:
+            return {
+                "reason": str(err),
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong"
+            }
 
 if __name__ == '__main__':
     app.run(debug=True)

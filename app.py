@@ -2660,8 +2660,13 @@ def notification():
                 current_status = None
 
             if isinstance(notification_id, list):
-                # Convert the list to a tuple
                 notification_id = tuple(notification_id)
+
+                # Convert the list to a tuple
+                if len(notification_id) == 1:
+                    notification_id = str(notification_id).replace(',', "")
+                else:
+                    notification_id = notification_id
                 query = f"DELETE FROM notification WHERE id IN {notification_id}"
                 cursor.execute(query)
                 connection.commit()

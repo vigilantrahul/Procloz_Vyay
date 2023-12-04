@@ -1770,7 +1770,7 @@ def request_approved():
                         Team VYAY
                     """
         mail.send(msg)
-        cursor.execute(query, (request_id, user_id, current_date, "approved"))
+        cursor.execute(query, (request_id, user_id, current_date, 1))
         connection.commit()
 
         # Checking for adv_cash and sending mail:
@@ -2654,20 +2654,33 @@ def notification():
         try:
             data = request.get_json()
             notification_id = data.get('notificationId')
-            query = "Update notification SET current_status=0 where id=?"
-            cursor.execute(query, (notification_id, ))
-            connection.commit()
 
-            return {
-                'responseCode': http_status_codes.HTTP_200_OK,
-                'responseMessage': 'Status Update Successfully'
-            }
+            if isinstance(notification_id, list):
+                # Convert the list to a tuple
+                notification_id = tuple(notification_id)
+                query = f"DELETE FROM notification WHERE id IN {notification_id}"
+                cursor.execute(query)
+                connection.commit()
+                return {
+                    'responseCode': http_status_codes.HTTP_200_OK,
+                    'responseMessage': 'Notifications Deleted Successfully'
+                }
+            else:
+                query = "Update notification SET current_status=0 where id=?"
+                cursor.execute(query, (notification_id, ))
+                connection.commit()
+
+                return {
+                    'responseCode': http_status_codes.HTTP_200_OK,
+                    'responseMessage': 'Status Update Successfully'
+                }
         except Exception as err:
             return {
                 "reason": str(err),
                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
                 "responseMessage": "Something Went Wrong"
             }
+
 
 if __name__ == '__main__':
     app.run(debug=True)

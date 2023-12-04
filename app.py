@@ -2654,6 +2654,10 @@ def notification():
         try:
             data = request.get_json()
             notification_id = data.get('notificationId')
+            if "currentStatus" in data:
+                current_status = data.get('currentStatus')
+            else:
+                current_status = None
 
             if isinstance(notification_id, list):
                 # Convert the list to a tuple
@@ -2666,8 +2670,8 @@ def notification():
                     'responseMessage': 'Notifications Deleted Successfully'
                 }
             else:
-                query = "Update notification SET current_status=0 where id=?"
-                cursor.execute(query, (notification_id, ))
+                query = "Update notification SET current_status=? where id=?"
+                cursor.execute(query, (current_status, notification_id))
                 connection.commit()
 
                 return {

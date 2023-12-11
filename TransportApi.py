@@ -1,9 +1,13 @@
 from constants import http_status_codes, custom_status_codes
 
 
-def clear_hotel_data(cursor, connection, request_id):
+def clear_hotel_data(cursor, connection, request_id, request_type=None):
     # Condition is that request_id data available in the transport table regarding
-    query = "DELETE FROM hotel WHERE request_id=?"
+    if request_type == "expense":
+        query = "DELETE FROM expensehotel WHERE request_id=?"
+    else:
+        query = "DELETE FROM hotel WHERE request_id=?"
+
     cursor.execute(query, (request_id, ))
     connection.commit()
     return {
@@ -12,10 +16,13 @@ def clear_hotel_data(cursor, connection, request_id):
     }
 
 
-def clear_perdiem_data(cursor, connection, request_id):
-
+def clear_perdiem_data(cursor, connection, request_id, request_type=None):
     # Condition is that request_id data available in the transport table regarding
-    query = "DELETE FROM perdiem WHERE request_id=?"
+    if request_type == "expense":
+        query = "DELETE FROM expenseperdiem WHERE request_id=?"
+    else:
+        query = "DELETE FROM perdiem WHERE request_id=?"
+
     cursor.execute(query, (request_id, ))
     connection.commit()
     return {
@@ -24,8 +31,12 @@ def clear_perdiem_data(cursor, connection, request_id):
     }
 
 
-def clear_transport_data(cursor, connection, request_id, transport_type):
-    query = "DELETE FROM transport Where request_id=? and transport_type=?"
+def clear_transport_data(cursor, connection, request_id, transport_type, request_type=None):
+    if request_type == "expense":
+        query = "DELETE FROM transport Where request_id=? and transport_type=?"
+    else:
+        query = "DELETE FROM transport Where request_id=? and transport_type=?"
+
     cursor.execute(query, (request_id, transport_type, ))
     connection.commit()
     return {

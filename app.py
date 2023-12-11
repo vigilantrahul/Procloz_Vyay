@@ -11,6 +11,7 @@ from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
 from request_list import request_list
+from TotalAmountRequest import total_amount_request
 from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
     clear_perdiem_data, clear_transport_data
 
@@ -333,7 +334,6 @@ def verify_otp_code():
 # RESET PASSWORD
 @app.route('/reset-password', methods=['POST'])
 def reset_password():
-    print(connection)
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -383,7 +383,6 @@ def reset_password():
 @jwt_required()
 def change_password():
     try:
-        print(connection)
         # Validation for the Connection on DB/Server
         if not connection:
             custom_error_response = {
@@ -413,7 +412,6 @@ def change_password():
             }
 
         email = data.get("emailId")
-        print()
         query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
         cursor.execute(query, email)
         result = cursor.fetchone()
@@ -498,7 +496,13 @@ def request_initiate():
                     "purpose": response_data["purpose"],
                     "status": response_data["status"]
                 }
+
+                # Fetching the Total of the Request:
+                amount = total_amount_request(cursor, request_id)
+                amount = amount[0]
+
                 return {
+                    "amount": amount,
                     "responseCode": http_status_codes.HTTP_200_OK,
                     "responseData": response_data,
                     'responseMessage': 'Travel Request Fetched Successfully'
@@ -612,11 +616,9 @@ def update_cost_center():
             try:
                 qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
                 user_data = cursor.execute(qry_1, employee).fetchall()
-                # print("User_data: ", user_data)
 
                 qry_2 = "SELECT cost_center FROM travelrequest WHERE request_id=?"
                 cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
-                # print("Cost Center: ", cost_center)
 
             except Exception as err_1:
                 return {
@@ -651,8 +653,12 @@ def update_cost_center():
             else:
                 task_list = None
 
-            print("Task List if any change: ", task_list)
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             return jsonify({
+                "amount": amount,
                 "responseCode": 200,
                 "responseMessage": "Success",
                 "data": task_list
@@ -795,8 +801,13 @@ def request_transportation():
             if current_transport:
                 transport_data.append(current_transport)
 
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             return jsonify(
                 {
+                    "amount": amount,
                     'data': transport_data,
                     'responseMessage': "Transport Data Fetch Successfully",
                     'responseCode': http_status_codes.HTTP_200_OK
@@ -907,7 +918,12 @@ def request_hotel():
                            "estimatedCost": hotel.estimated_cost} for hotel in
                           request_hotel_data]
 
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             response_data = {
+                "amount": amount,
                 "data": hotel_list,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Hotel Request Successfully Fetched"
@@ -1014,7 +1030,12 @@ def request_perdiem():
                 for diem in request_perdiem_data
             ]
 
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             response_data = {
+                "amount": amount,
                 "data": per_diem_list,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Hotel Request Successfully Fetched"
@@ -1116,7 +1137,12 @@ def request_advcash():
                 cash_in_advance = None
                 reason_cash_in_advance = None
 
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             response_data = {
+                "amount": amount,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Cash Advance Data Fetched",
                 "data": {
@@ -1193,7 +1219,12 @@ def other_expense():
             international_roaming = None
             incident_expense = None
 
+        # Fetching the Total of the Request:
+        amount = total_amount_request(cursor, request_id)
+        amount = amount[0]
+
         response_data = {
+            "amount": amount,
             "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Other Expense Data Fetched",
             "data": {
@@ -1443,7 +1474,13 @@ def expense_initiate():
                     "purpose": response_data["purpose"],
                     "status": response_data["status"]
                 }
+
+                # Fetching the Total of the Request:
+                amount = total_amount_request(cursor, request_id)
+                amount = amount[0]
+
                 return {
+                    "amount": amount,
                     "responseCode": http_status_codes.HTTP_200_OK,
                     "responseData": response_data,
                     'responseMessage': 'Expense Request Fetched Successfully'
@@ -1579,6 +1616,10 @@ def expense_update_cost_center():
                     "responseMessage": "Error is Occurring"
                 }
 
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             task_list = [{'employee_id': user.employee_id,
                           'employee_first_name': user.employee_first_name,
                           'employee_middle_name': user.employee_middle_name,
@@ -1605,8 +1646,8 @@ def expense_update_cost_center():
             else:
                 task_list = None
 
-            print("Task List if any change: ", task_list)
             return jsonify({
+                "amount": amount,
                 "responseCode": 200,
                 "responseMessage": "Success",
                 "data": task_list
@@ -1677,14 +1718,27 @@ def expense_hotel():
     if request.method == "GET":
         try:
             request_id = request.headers.get('requestId')
-            query = "SELECT * from hotel WHERE request_id=?"
+            query = "SELECT * from expensehotel WHERE request_id=?"
             request_hotel_data = cursor.execute(query, request_id).fetchall()
             hotel_list = [{'requestId': hotel.request_id, 'cityName': hotel.city_name,
                            "startDate": hotel.check_in, "endDate": hotel.check_out,
-                           "estimatedCost": hotel.estimated_cost} for hotel in
+                           "estimatedCost": hotel.estimated_cost,
+                           "billDate": hotel.bill_date,
+                           "billNumber": hotel.bill_number,
+                           "billCurrency": hotel.bill_currency,
+                           "billAmount": hotel.bill_amount,
+                           "expenseType": hotel.expense_type,
+                           "establishmentName": hotel.establishment_name,
+                           "finalAmount": hotel.final_amount
+                           } for hotel in
                           request_hotel_data]
 
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
             response_data = {
+                "amount": amount,
                 "data": hotel_list,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Hotel Request Successfully Fetched"
@@ -1728,18 +1782,23 @@ def expense_hotel():
             for hotel in hotels:
                 hotel['requestId'] = request_id
 
-            # Code to Delete the previous Data related to that request ID:
-            sql_query = "DELETE FROM expensehotel WHERE request_id = ?"
-            cursor.execute(sql_query, (request_id,))
-            connection.commit()
+            # Validation for the hotel data in Expense Hotel Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM expensehotel WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result:
+                # Code to Delete the previous Data related to that request ID:
+                sql_query = "DELETE FROM expensehotel WHERE request_id = ?"
+                cursor.execute(sql_query, (request_id,))
+                connection.commit()
 
             # Construct the SQL query for bulk insert
             values = ', '.join([
-                f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['billDate']}', '{hotel['billNumber']}', '{hotel['billCurrency']}', {hotel['billAmount']}, '{hotel['expenseType']}', '{hotel['establishmentName']}', '{hotel['requestId']}')"
+                f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['billDate']}', '{hotel['billNumber']}', '{hotel['billCurrency']}', {hotel['billAmount']}, '{hotel['expenseType']}', '{hotel['establishmentName']}', '{hotel['finalAmount']}', '{hotel['requestId']}')"
                 for hotel in hotels
             ])
 
-            query = f"INSERT INTO expensehotel (city_name, check_in, check_out, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, request_id) VALUES {values}"
+            query = f"INSERT INTO expensehotel (city_name, check_in, check_out, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, request_id) VALUES {values}"
 
             # Execute the query
             cursor.execute(query)
@@ -1759,7 +1818,7 @@ def expense_hotel():
 
 # 5. Request PerDiem on Travel
 @jwt_required()
-@app.route('/request-perdiem', methods=['GET', 'POST'])
+@app.route('/expense-perdiem', methods=['GET', 'POST'])
 def expense_perdiem():
     # Validation for the Connection on DB/Server
     if not connection:
@@ -1774,13 +1833,18 @@ def expense_perdiem():
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")
+            # key -> tra
             if request_id is None:
                 return {
                     "responseCode": 400,
                     "responseMessage": "(Debug) -> requestId is required Field"
                 }
-            query = "SELECT * from perdiem WHERE request_id=?"
+            query = "SELECT * from expenseperdiem WHERE request_id=?"
             request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
 
             per_diem_list = [
                 {
@@ -1793,9 +1857,10 @@ def expense_perdiem():
             ]
 
             response_data = {
+                "amount": amount,
                 "data": per_diem_list,
                 "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Hotel Request Successfully Fetched"
+                "responseMessage": "Hotel Expense Request Successfully Fetched"
             }
             return jsonify(response_data)
         except Exception as err:
@@ -1808,13 +1873,13 @@ def expense_perdiem():
     if request.method == "POST":
         try:
             data = request.get_json()
+
             # Validation of Data:
             if "requestId" not in data or "diems" not in data:
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                     "responseMessage": "Required Fields are Empty"
                 }
-
             request_id = data.get("requestId")
             diems = data.get("diems")
 
@@ -1831,17 +1896,22 @@ def expense_perdiem():
             for diem in diems:
                 diem['requestId'] = request_id
 
-            # Code to Delete the previous Data related to that request ID:
-            sql_query = "DELETE FROM perdiem WHERE request_id = ?"
-            cursor.execute(sql_query, (request_id,))
-            connection.commit()
+            # Validating data from Expense Perdiem Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM expenseperdiem WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result:
+                # Code to Delete the previous Data related to that request ID:
+                sql_query = "DELETE FROM expenseperdiem WHERE request_id = ?"
+                cursor.execute(sql_query, (request_id,))
+                connection.commit()
 
             # Construct the SQL query for bulk insert
             values = ', '.join([
                 f"('{diem['date']}', '{diem['breakfast']}', '{diem['lunch']}', {diem['dinner']}, '{diem['requestId']}')"
                 for diem in diems
             ])
-            query = f"INSERT INTO perdiem (diem_date, breakfast, lunch, dinner, request_id) VALUES {values}"
+            query = f"INSERT INTO expenseperdiem (diem_date, breakfast, lunch, dinner, request_id) VALUES {values}"
 
             # Execute the query
             cursor.execute(query)
@@ -1849,7 +1919,7 @@ def expense_perdiem():
 
             return jsonify({
                 "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Diems Saved Successfully",
+                "responseMessage": "Expense Perdiems Data Saved Successfully",
             })
         except Exception as err:
             return jsonify({
@@ -1859,8 +1929,346 @@ def expense_perdiem():
             })
 
 
-# ------------------------------- Request Status Update -------------------------------
+# 6. Request Advance Cash on Travel
+@app.route('/expense-advcash', methods=['GET', 'POST'])
+@jwt_required()
+def expense_advcash():
+    # Validation for the Connection on DB/Server:
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
 
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")
+            if request_id is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "(DEBUG) -> RequestId is Required"
+                }
+            query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
+            cursor.execute(query, (request_id,))
+
+            # Fetch the data
+            cash_advance_data = cursor.fetchone()
+
+            # Check if data is found
+            if cash_advance_data:
+                cash_in_advance, reason_cash_in_advance = cash_advance_data
+            else:
+                cash_in_advance = None
+                reason_cash_in_advance = None
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
+            response_data = {
+                "amount": amount,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Cash Advance Data Fetched",
+                "data": {
+                    "cashInAdvance": cash_in_advance,
+                    "reasonCashInAdvance": reason_cash_in_advance
+                }
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            # Validation of Data:
+            if "requestId" not in data or "cash_in_advance" not in data or "reason_cash_in_advance" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
+
+            request_id = data.get("requestId")
+            cash_in_advance = data.get("cash_in_advance")
+            reason_cash_in_advance = data.get("reason_cash_in_advance")
+
+            # Query To Save Advance Cash Request in Travel Request Table
+            query = f"UPDATE expenserequest SET cash_in_advance=?, reason_cash_in_advance=? WHERE request_id=?"
+            cursor.execute(query, (cash_in_advance, reason_cash_in_advance, request_id))
+            connection.commit()
+
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Cash Advance Saved Successfully",
+            })
+
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+
+# 7. Other Expense API
+@app.route('/expense-other-expense', methods=['GET', 'POST'])
+@jwt_required()
+def expense_other_expense():
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        request_id = request.headers.get("requestId")
+        query = "SELECT international_roaming, incident_expense from expenserequest where request_id=?"
+        cursor.execute(query, (request_id,))
+
+        # Fetch the data
+        other_expense_data = cursor.fetchone()
+
+        # Check if data is found
+        if other_expense_data:
+            international_roaming, incident_expense = other_expense_data
+        else:
+            international_roaming = None
+            incident_expense = None
+
+        # Fetching the Total of the Request:
+        amount = total_amount_request(cursor, request_id)
+        amount = amount[0]
+
+        response_data = {
+            "amount": amount,
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Other Expense Data Fetched",
+            "data": {
+                "internationalRoaming": international_roaming,
+                "incidentExpense": incident_expense
+            }
+        }
+        return jsonify(response_data)
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            if "requestPolicy" not in data or "requestId" not in data:
+                return jsonify({
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
+                })
+
+            # Validation of the international expense and internation roaming as per the requestPolicy.
+
+            request_id = data.get("requestId")
+            if "incident_expense" in data or "international_roaming" in data:
+                international_roaming = data.get("international_roaming")
+                incident_expense = data.get("incident_expense")
+
+                query = f"UPDATE expenserequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
+                cursor.execute(query, (international_roaming, incident_expense, request_id))
+                connection.commit()
+                return jsonify({
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Other Expense Saved Successfully"
+                })
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+
+# 8. Clearing Data API
+@app.route('/clear-data', methods=['POST'])
+@jwt_required()
+def clear_data():
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+        request_type = data["requestType"]
+        if request_type == "transport":
+            if "transportType" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Transport Type is a Required Field"
+                }
+        if "transportType" in data:
+            transport_type = data["transportType"]
+        else:
+            transport_type = None
+
+        # Validation of None Value
+        if request_type is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> requestType not found"
+            }
+
+        # Checking the Condition for the Request Type
+        if request_type.lower() == "hotel":
+            result = clear_hotel_data(cursor, connection, request_id, "expense")
+            return result
+        elif request_type.lower() == "perdiem":
+            result = clear_perdiem_data(cursor, connection, request_id, "expense")
+            return result
+        elif request_type.lower() == "transport":
+            result = clear_transport_data(cursor, connection, request_id, transport_type, "expense")
+            return result
+        else:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> Invalid request_type Found"
+            }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
+
+
+# 9. Canceling Request Data API
+@app.route('/cancel-expense-request', methods=['POST'])
+@jwt_required()
+def cancel_request():
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+
+        query = f"""
+            Delete from expenserequest where expenserequest.request_id=?
+        """
+
+        cursor.execute(query, (request_id,))
+        connection.commit()
+
+        return {
+            "responseMessage": "Expense Request Cancelled Successfully",
+            "responseCode": http_status_codes.HTTP_200_OK
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
+
+
+# 10. Request Detail Page API
+@app.route('/expense-request-detail', methods=['GET'])
+@jwt_required()
+def request_detail():
+    request_id = request.headers.get("requestId")
+    query = """
+        select 
+            t.request_id,
+            t.request_name,
+            t.start_date,
+            t.request_policy,
+            e.employee_first_name,
+            t.end_date,
+            e.employee_id,
+            t.status,
+            t.cash_in_advance,
+            h.estimated_cost hotel_estimated_cost,
+            tmap.Flight_Cost,
+            tbus.Bus_Cost,
+            ttrain.Train_Cost,
+            tcarrental.CarRental,
+            taxicost.Taxi_Cost,
+            COALESCE(t.cash_in_advance,0) + COALESCE(h.estimated_cost,0) + COALESCE(tmap.Flight_Cost,0) + COALESCE(tbus.Bus_Cost,0) + COALESCE(ttrain.Train_Cost,0)
+            + COALESCE(tcarrental.CarRental,0) + COALESCE(taxicost.Taxi_Cost,0) as "Total Cost"
+        FROM userproc05092023_1 e
+        JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
+        Join travelrequest t on t.user_id= e.employee_id
+        Left Join ( select request_id,sum(estimated_cost) as estimated_cost from hotel group by request_id)
+                h on h.request_id = t.request_id
+        Left Join (select Distinct request_id from transport) trans on trans.request_id = t.request_id 
+            and  trans.request_id = h.request_id
+        Left Join ( select t.request_id,sum(tmap.estimated_cost) as "Flight_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'flight' group by t.request_id) 
+                    tmap on tmap.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "Bus_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'bus' group by t.request_id) tbus
+                    on tbus.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "Train_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'train' group by t.request_id) ttrain
+                    on ttrain.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "CarRental"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'carRental' group by t.request_id) tcarrental
+                    on tcarrental.request_id = t.request_id
+        Left Join (select t.request_id, sum(tmap.estimated_cost) as "Taxi_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
+                    where t.transport_type = 'taxi' group by t.request_id) taxicost
+                    on taxicost.request_id = t.request_id
+        WHERE t.request_id = ?
+    """
+
+    result = cursor.execute(query, (request_id,)).fetchone()
+    if not result:
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "RequestId is Invalid"
+        }
+    detail_data = [
+        {
+            "expenseType": "Cash In Advance",
+            "amount": result[8]
+        },
+        {
+            "expenseType": "Hotel Fare",
+            "amount": result[9]
+        },
+        {
+            "expenseType": "Air Fare",
+            "amount": result[10]
+        },
+        {
+            "expenseType": "Bus Fare",
+            "amount": result[11]
+        },
+        {
+            "expenseType": "Train Fare",
+            "amount": result[12]
+        },
+        {
+            "expenseType": "Car Rental",
+            "amount": result[13]
+        },
+        {
+            "expenseType": "Taxi Fare",
+            "amount": result[14]
+        },
+    ]
+
+    return {
+        "requestId": result[0],
+        "requestName": result[1],
+        "startDate": result[2],
+        "requestPolicy": result[3],
+        "employeeFirstName": result[4],
+        "endDate": result[5],
+        "employeeId": result[6],
+        "status": result[7],
+        "totalCost": result[15],
+        "data": detail_data,
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Request Detail "
+    }
+
+
+# ------------------------------- Request Status Update -------------------------------
 @app.route('/request-submit', methods=['POST'])
 @jwt_required()
 def request_submit():
@@ -2282,7 +2690,6 @@ def request_paid():
         query = "SELECT 1 AS exists_flag FROM travelrequest WHERE request_id = ? AND status = 'send for payment'"
         cursor.execute(query, (request_id,))
         result = cursor.fetchone()
-        print("result: ", result)
         if result is None:
             return {
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -2520,7 +2927,7 @@ def travel_request_count():
 # Total Request of specific Employee:
 @app.route('/travel-request-list', methods=['GET'])
 @jwt_required()
-def total_travel_request():
+def travel_request_list():
     try:
         employeeId = request.headers.get('employeeId')
 
@@ -2530,14 +2937,13 @@ def total_travel_request():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
             }
+
         data_list = request_list(cursor, employeeId)
-        # print("data_list: ", data_list)
         open_req = []
         total_req = []
         to_be_approve = []
         pending_req = []
         for req in data_list:
-            print("req: ", req)
             data_dict = {
                 'request_id': req[1],
                 'request_name': req[2],
@@ -2555,7 +2961,6 @@ def total_travel_request():
                 total_req.append(data_dict)
             elif req[0] == 'To Be Approved':
                 to_be_approve.append(data_dict)
-
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
             "data": {
@@ -2985,6 +3390,31 @@ def notification():
                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
                 "responseMessage": "Something Went Wrong"
             }
+
+
+@app.route('/sample-api-test', methods=['GET'])
+# @jwt_required()
+def sample_api_test():
+    try:
+        file = request.files['picture']
+        print(file)
+        # Read the binary data from the file
+        binary_data = file.read()
+
+        # Execute the SQL query
+        query = "INSERT INTO SampleTable (picture) VALUES (?)"
+        cursor.execute(query, (binary_data,))
+
+        # Commit the changes to the database
+        connection.commit()
+
+        return "File uploaded successfully"
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong!!",
+            "error": str(err)
+        }
 
 
 if __name__ == '__main__':

@@ -2091,9 +2091,9 @@ def expense_other_expense():
 
 
 # 8. Clearing Data API
-@app.route('/clear-data', methods=['POST'])
+@app.route('/clear-expense-data', methods=['POST'])
 @jwt_required()
-def clear_data():
+def expense_clear_data():
     try:
         data = request.get_json()
         request_id = data["requestId"]
@@ -2142,7 +2142,7 @@ def clear_data():
 # 9. Canceling Request Data API
 @app.route('/cancel-expense-request', methods=['POST'])
 @jwt_required()
-def cancel_request():
+def expense_cancel_request():
     try:
         data = request.get_json()
         request_id = data["requestId"]
@@ -2169,7 +2169,7 @@ def cancel_request():
 # 10. Request Detail Page API
 @app.route('/expense-request-detail', methods=['GET'])
 @jwt_required()
-def request_detail():
+def expense_request_detail():
     request_id = request.headers.get("requestId")
     query = """
         select 

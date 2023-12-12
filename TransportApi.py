@@ -62,8 +62,8 @@ def flight_data(cursor, connection, request_id, transports, employee_id):
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=?"
-        cursor.execute(query, (request_id,))
+        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        cursor.execute(query, (request_id, transport_type,))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
@@ -113,8 +113,8 @@ def train_data(cursor, connection, request_id, transports, employee_id):
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=?"
-        cursor.execute(query, (request_id,))
+        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        cursor.execute(query, (request_id, transport_type, ))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
@@ -165,8 +165,8 @@ def bus_data(cursor, connection, request_id, transports, employee_id):
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=?"
-        cursor.execute(query, (request_id,))
+        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        cursor.execute(query, (request_id, transport_type, ))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
@@ -214,8 +214,8 @@ def taxi_data(cursor, connection, data):
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=?"
-        cursor.execute(query, (request_id,))
+        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        cursor.execute(query, (request_id, transport_type, ))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
@@ -255,8 +255,8 @@ def carrental_data(cursor, connection, data):
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=?"
-        cursor.execute(query, (request_id,))
+        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        cursor.execute(query, (request_id, transport_type, ))
 
     # Inserting the data in the transport table
     sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"

@@ -1444,55 +1444,10 @@ def request_detail():
 
 # ------------------------------- Expense Initiating API -------------------------------
 # 1. Expense Request Common Data Insertion:
-@app.route('/expense-request', methods=['GET', 'POST'])
+@app.route('/expense-request', methods=['POST'])
 @jwt_required()
 def expense_initiate():
-    # Validation for the Connection on DB/Server
-    if request.method == 'GET':
-        try:
-            request_id = request.headers.get('requestId')
-
-            # Validating request_id in travel Request Table:
-            query = "SELECT request_id, request_name, request_policy, start_date, end_date, purpose, status FROM expenserequest WHERE request_id = ?"
-            cursor.execute(query, (request_id,))
-            result = cursor.fetchone()
-            if result is None:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Request ID Not Exists!!"
-                }
-            else:
-                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose',
-                                'status']
-                response_data = dict(zip(column_names, result))
-                response_data = {
-                    "requestId": response_data["request_id"],
-                    "requestName": response_data["request_name"],
-                    "requestPolicy": response_data["request_policy"],
-                    "startDate": response_data["start_date"],
-                    "endDate": response_data["end_date"],
-                    "purpose": response_data["purpose"],
-                    "status": response_data["status"]
-                }
-
-                # Fetching the Total of the Request:
-                amount = total_amount_request(cursor, request_id)
-                amount = amount[0]
-
-                return {
-                    "amount": amount,
-                    "responseCode": http_status_codes.HTTP_200_OK,
-                    "responseData": response_data,
-                    'responseMessage': 'Expense Request Fetched Successfully'
-                }
-        except Exception as err:
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong While Fetching Record",
-                "reason": str(err)
-            })
-
-    elif request.method == 'POST':
+    if request.method == 'POST':
         # Saving the Request Data
         try:
             data = request.get_json()
@@ -1576,7 +1531,7 @@ def expense_initiate():
 
 
 # 2. updating Cost Center
-@app.route('/expense-cost-center', methods=['GET', 'POST'])
+@app.route('/expense-cost-center', methods=['POST'])
 @jwt_required()
 def expense_update_cost_center():
     if not connection:
@@ -1587,78 +1542,6 @@ def expense_update_cost_center():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
-
-    if request.method == "GET":
-        try:
-            request_id = request.headers.get('requestId')
-            organization = request.headers.get('organization')
-            employee = request.headers.get('employeeId')
-
-            if organization is None or employee is None:
-                return {
-                    "responseCode": 400,
-                    "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
-                }
-
-            try:
-                qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
-                user_data = cursor.execute(qry_1, employee).fetchall()
-                # print("User_data: ", user_data)
-
-                qry_2 = "SELECT cost_center FROM expenserequest WHERE request_id=?"
-                cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
-                print("Cost Center: ", cost_center)
-
-            except Exception as err_1:
-                return {
-                    "error": str(err_1),
-                    "responseCode": 500,
-                    "responseMessage": "Error is Occurring"
-                }
-
-            # Fetching the Total of the Request:
-            amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
-
-            task_list = [{'employee_id': user.employee_id,
-                          'employee_first_name': user.employee_first_name,
-                          'employee_middle_name': user.employee_middle_name,
-                          'employee_last_name': user.employee_last_name,
-                          'employee_business_title': user.employee_business_title,
-                          'cost_center': user.costcenter,
-                          'employee_country_name': user.employee_country_name,
-                          'employee_currency_code': user.employee_currency_code,
-                          'employee_currency_name': user.employee_currency_name,
-                          'manager_id': user.manager_id,
-                          'l1_manager_id': user.l1_manager_id,
-                          'l2_manager_id': user.l2_manager_id,
-                          'expense_administrator': user.expense_administrator,
-                          'finance_contact_person': user.finance_contact_person,
-                          'company_name': user.organization,
-                          'business_unit': user.business_unit,
-                          'department': user.department,
-                          'function': user.func}
-                         for user in user_data]
-            if len(task_list) == 1:
-                task_list = task_list[0]
-                if cost_center[0] is not None:
-                    task_list["cost_center"] = cost_center[0]
-            else:
-                task_list = None
-
-            return jsonify({
-                "amount": amount,
-                "responseCode": 200,
-                "responseMessage": "Success",
-                "data": task_list
-            })
-
-        except Exception as err:
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Something Went Wrong",
-                "reason": str(err)
-            })
 
     if request.method == "POST":
         data = request.get_json()
@@ -1702,7 +1585,7 @@ def expense_update_cost_center():
 
 
 # 4. Request Hotel on Travel
-@app.route('/expense-hotel', methods=['GET', 'POST'])
+@app.route('/expense-hotel', methods=['POST'])
 @jwt_required()
 def expense_hotel():
     # Validation for the Connection on DB/Server
@@ -1714,42 +1597,6 @@ def expense_hotel():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
-
-    if request.method == "GET":
-        try:
-            request_id = request.headers.get('requestId')
-            query = "SELECT * from expensehotel WHERE request_id=?"
-            request_hotel_data = cursor.execute(query, request_id).fetchall()
-            hotel_list = [{'requestId': hotel.request_id, 'cityName': hotel.city_name,
-                           "startDate": hotel.check_in, "endDate": hotel.check_out,
-                           "estimatedCost": hotel.estimated_cost,
-                           "billDate": hotel.bill_date,
-                           "billNumber": hotel.bill_number,
-                           "billCurrency": hotel.bill_currency,
-                           "billAmount": hotel.bill_amount,
-                           "expenseType": hotel.expense_type,
-                           "establishmentName": hotel.establishment_name,
-                           "finalAmount": hotel.final_amount
-                           } for hotel in
-                          request_hotel_data]
-
-            # Fetching the Total of the Request:
-            amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
-
-            response_data = {
-                "amount": amount,
-                "data": hotel_list,
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Hotel Request Successfully Fetched"
-            }
-            return jsonify(response_data)
-        except Exception as err:
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Something Went Wrong",
-                "reason": str(err)
-            })
 
     if request.method == "POST":
         try:
@@ -1818,7 +1665,7 @@ def expense_hotel():
 
 # 5. Request PerDiem on Travel
 @jwt_required()
-@app.route('/expense-perdiem', methods=['GET', 'POST'])
+@app.route('/expense-perdiem', methods=['POST'])
 def expense_perdiem():
     # Validation for the Connection on DB/Server
     if not connection:
@@ -1829,46 +1676,6 @@ def expense_perdiem():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
-
-    if request.method == "GET":
-        try:
-            request_id = request.headers.get("requestId")
-            # key -> tra
-            if request_id is None:
-                return {
-                    "responseCode": 400,
-                    "responseMessage": "(Debug) -> requestId is required Field"
-                }
-            query = "SELECT * from expenseperdiem WHERE request_id=?"
-            request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
-
-            # Fetching the Total of the Request:
-            amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
-
-            per_diem_list = [
-                {
-                    'date': diem.diem_date,  # 'date': diem.diem_date.strftime('%d/%m/%Y'),
-                    "breakfast": diem.breakfast,
-                    "lunch": diem.lunch,
-                    "dinner": diem.dinner
-                }
-                for diem in request_perdiem_data
-            ]
-
-            response_data = {
-                "amount": amount,
-                "data": per_diem_list,
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Hotel Expense Request Successfully Fetched"
-            }
-            return jsonify(response_data)
-        except Exception as err:
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Something Went Wrong",
-                "reason": str(err)
-            })
 
     if request.method == "POST":
         try:
@@ -1930,7 +1737,7 @@ def expense_perdiem():
 
 
 # 6. Request Advance Cash on Travel
-@app.route('/expense-advcash', methods=['GET', 'POST'])
+@app.route('/expense-advcash', methods=['POST'])
 @jwt_required()
 def expense_advcash():
     # Validation for the Connection on DB/Server:
@@ -1942,48 +1749,6 @@ def expense_advcash():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
-
-    if request.method == "GET":
-        try:
-            request_id = request.headers.get("requestId")
-            if request_id is None:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "(DEBUG) -> RequestId is Required"
-                }
-            query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
-            cursor.execute(query, (request_id,))
-
-            # Fetch the data
-            cash_advance_data = cursor.fetchone()
-
-            # Check if data is found
-            if cash_advance_data:
-                cash_in_advance, reason_cash_in_advance = cash_advance_data
-            else:
-                cash_in_advance = None
-                reason_cash_in_advance = None
-
-            # Fetching the Total of the Request:
-            amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
-
-            response_data = {
-                "amount": amount,
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Cash Advance Data Fetched",
-                "data": {
-                    "cashInAdvance": cash_in_advance,
-                    "reasonCashInAdvance": reason_cash_in_advance
-                }
-            }
-            return jsonify(response_data)
-        except Exception as err:
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Something Went Wrong",
-                "reason": str(err)
-            })
 
     if request.method == "POST":
         try:
@@ -2018,7 +1783,7 @@ def expense_advcash():
 
 
 # 7. Other Expense API
-@app.route('/expense-other-expense', methods=['GET', 'POST'])
+@app.route('/expense-other-expense', methods=['POST'])
 @jwt_required()
 def expense_other_expense():
     if not connection:
@@ -2030,35 +1795,6 @@ def expense_other_expense():
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
 
-    if request.method == "GET":
-        request_id = request.headers.get("requestId")
-        query = "SELECT international_roaming, incident_expense from expenserequest where request_id=?"
-        cursor.execute(query, (request_id,))
-
-        # Fetch the data
-        other_expense_data = cursor.fetchone()
-
-        # Check if data is found
-        if other_expense_data:
-            international_roaming, incident_expense = other_expense_data
-        else:
-            international_roaming = None
-            incident_expense = None
-
-        # Fetching the Total of the Request:
-        amount = total_amount_request(cursor, request_id)
-        amount = amount[0]
-
-        response_data = {
-            "amount": amount,
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Other Expense Data Fetched",
-            "data": {
-                "internationalRoaming": international_roaming,
-                "incidentExpense": incident_expense
-            }
-        }
-        return jsonify(response_data)
     if request.method == "POST":
         try:
             data = request.get_json()
@@ -2785,6 +2521,7 @@ def request_send_back():
 def travel_request_count():
     try:
         employeeId = request.headers.get('employeeId')
+        # requestType = request.headers.get('requestType')
 
         # Condition of the Open Request:
         query = """
@@ -2930,6 +2667,7 @@ def travel_request_count():
 def travel_request_list():
     try:
         employeeId = request.headers.get('employeeId')
+        # requestType = request.headers.get('requestType')
 
         # Condition of Required Data in Request
         if employeeId is None:
@@ -2977,145 +2715,6 @@ def travel_request_list():
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "responseMessage": "Something Went Wrong"
         }
-
-
-# To Be Approved Request Under a Manager:
-@app.route('/request-to-approved', methods=['GET'])
-@jwt_required()
-def request_tobe_approved():
-    try:
-        employeeId = request.headers.get('employeeId')
-
-        # Condition of Required Data in Request
-        if employeeId is None:
-            return {
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
-            }
-
-        # Code block for fetching the request data from the travelrequest Table
-        query = """
-                select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name
-                from userproc05092023_1 e
-                join userproc05092023_1 m on e.manager_id=m.employee_id
-                join travelrequest t on t.user_id=e.employee_id
-                WHERE e.manager_id=?
-            """
-
-        result = cursor.execute(query, (employeeId,)).fetchall()
-
-        manager_down_lines = [
-            {
-                "request_id": req[0],
-                "request_name": req[1],
-                "start_date": req[2],
-                "request_policy": req[3],
-                "employee_name": req[4],
-                "Emp_id": req[5],
-                "status": req[6]
-            }
-            for req in result
-        ]
-        return {
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "data": manager_down_lines,
-            "responseMessage": "Hey You ... Sab Chal Rha hai!!"
-        }
-    except Exception as err:
-        return {
-            "error": str(err),
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "responseMessage": "Something Went Wrong"
-        }
-
-
-# Pending Request of specific Employee:
-@app.route('/pending-travel-request', methods=['GET'])
-@jwt_required()
-def pending_travel_request():
-    if not connection:
-        custom_error_response = {
-            "connection": str(connection),
-            "responseMessage": "Database Connection Error",
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "reason": "Failed to connect to the database. Please try again later."
-        }
-        return jsonify(custom_error_response)
-    if request.method == "GET":
-        try:
-            employeeId = request.headers.get('employeeId')
-            query = "SELECT * FROM travelrequest WHERE status='submitted' and user_id=?"
-            pending_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
-            pending_travel_request_list = [
-                {
-                    "request_id": req.request_id,
-                    "request_name": req.request_name,
-                    "request_policy": req.request_policy,
-                    "start_date": req.start_date
-                }
-                for req in pending_travel_request_data
-            ]
-            return {
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Pending Travel Request List",
-                "data": pending_travel_request_list
-            }
-        except Exception as err:
-            return {
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong",
-                "error": str(err)
-            }
-
-
-# Open Request of specific Employee:
-@app.route('/open-travel-request', methods=['GET'])
-@jwt_required()
-def open_travel_request():
-    if not connection:
-        custom_error_response = {
-            "connection": str(connection),
-            "responseMessage": "Database Connection Error",
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "reason": "Failed to connect to the database. Please try again later."
-        }
-        return jsonify(custom_error_response)
-
-    if request.method == "GET":
-        try:
-            employeeId = request.headers.get('employeeId')
-            # query = "SELECT * FROM travelrequest WHERE status IN ('initiated', 'rejected') and user_id=?"
-            query = """
-                    select t.request_id,t.request_name,t.start_date,t.request_policy,e.employee_first_name,e.employee_id,t.status, e.manager_id,m.employee_first_name 
-                    from userproc05092023_1 e 
-                    JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
-                    JOIN travelrequest t ON t.user_id = e.employee_id
-                    WHERE e.employee_id=? AND t.status IN ('initiated', 'rejected');
-            """
-            open_travel_request_data = cursor.execute(query, (employeeId,)).fetchall()
-            open_travel_request_list = [
-                {
-                    "request_id": req[0],
-                    "request_name": req[1],
-                    "start_date": req[2],
-                    "request_policy": req[3],
-                    "employee_name": req[4],
-                    "emp_id": req[5],
-                    "status": req[6]
-                }
-                for req in open_travel_request_data
-            ]
-            return {
-                "responseCode": http_status_codes.HTTP_200_OK,
-                "responseMessage": "Open Travel Request List",
-                "data": open_travel_request_list
-            }
-        except Exception as err:
-            return {
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong",
-                "error": str(err)
-            }
 
 
 # ------------------------------- Data Fetch API -------------------------------

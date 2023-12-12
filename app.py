@@ -2242,7 +2242,7 @@ def request_approved():
                         Team VYAY
                     """
             mail.send(msg)
-            cursor.execute(query, (request_id, user_id, current_date, "approved"))
+            cursor.execute(query, (request_id, user_id, current_date, 1))
             connection.commit()
 
         return {

@@ -473,9 +473,19 @@ def request_initiate():
     if request.method == 'GET':
         try:
             request_id = request.headers.get('requestId')
+            request_type = request.headers.get('requestType')
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Invalid Request Type Found"
+                }
 
             # Validating request_id in travel Request Table:
-            query = "SELECT request_id, request_name, request_policy, start_date, end_date, purpose, status FROM travelrequest WHERE request_id = ?"
+            if request_type == "expense":
+                query = "SELECT request_id, request_name, request_policy, start_date, end_date, purpose, status FROM expenserequest WHERE request_id = ?"
+            else:
+                query = "SELECT request_id, request_name, request_policy, start_date, end_date, purpose, status FROM travelrequest WHERE request_id = ?"
+
             cursor.execute(query, (request_id,))
             result = cursor.fetchone()
             if result is None:
@@ -606,6 +616,12 @@ def update_cost_center():
             request_id = request.headers.get('requestId')
             organization = request.headers.get('organization')
             employee = request.headers.get('employeeId')
+            request_type = request.headers.get('requestType')
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Invalid Request Type Found"
+                }
 
             if organization is None or employee is None:
                 return {
@@ -616,8 +632,11 @@ def update_cost_center():
             try:
                 qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
                 user_data = cursor.execute(qry_1, employee).fetchall()
+                if request_type == "expense":
+                    qry_2 = "SELECT cost_center FROM expenserequest WHERE request_id=?"
+                else:
+                    qry_2 = "SELECT cost_center FROM travelrequest WHERE request_id=?"
 
-                qry_2 = "SELECT cost_center FROM travelrequest WHERE request_id=?"
                 cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
 
             except Exception as err_1:
@@ -911,7 +930,18 @@ def request_hotel():
     if request.method == "GET":
         try:
             request_id = request.headers.get('requestId')
-            query = "SELECT * from hotel WHERE request_id=?"
+            request_type = request.headers.get('requestType')
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Invalid Request Type Found"
+                }
+
+            if request_type == "expense":
+                query = "SELECT * from expensehotel WHERE request_id=?"
+            else:
+                query = "SELECT * from hotel WHERE request_id=?"
+
             request_hotel_data = cursor.execute(query, request_id).fetchall()
             hotel_list = [{'requestId': hotel.request_id, 'cityName': hotel.city_name,
                            "startDate": hotel.check_in, "endDate": hotel.check_out,
@@ -1012,12 +1042,24 @@ def request_perdiem():
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")
+            request_type = request.headers.get("requestType")
+
             if request_id is None:
                 return {
                     "responseCode": 400,
                     "responseMessage": "(Debug) -> requestId is required Field"
                 }
-            query = "SELECT * from perdiem WHERE request_id=?"
+
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Invalid Request Type Found"
+                }
+            if request_type == "expense":
+                query = "SELECT * from expenseperdiem WHERE request_id=?"
+            else:
+                query = "SELECT * from perdiem WHERE request_id=?"
+
             request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
 
             per_diem_list = [
@@ -1119,12 +1161,23 @@ def request_advcash():
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")
+            request_type = request.headers.get("requestType")
+
             if request_id is None:
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                     "responseMessage": "(DEBUG) -> RequestId is Required"
                 }
-            query = "SELECT cash_in_advance, reason_cash_in_advance FROM travelrequest WHERE request_id = ?"
+
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Invalid Request Type Found"
+                }
+            if request_type == "expense": # From Expense Request Data
+                query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
+            else: # From Travel Request Data
+                query = "SELECT cash_in_advance, reason_cash_in_advance FROM travelrequest WHERE request_id = ?"
             cursor.execute(query, (request_id,))
 
             # Fetch the data
@@ -1206,7 +1259,17 @@ def other_expense():
 
     if request.method == "GET":
         request_id = request.headers.get("requestId")
-        query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
+        request_type = request.headers.get("requestType")
+        if request_type is None:
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Invalid Request Type Found"
+            }
+        if request_type == "expense":
+            query = "SELECT international_roaming, incident_expense from expenserequest where request_id=?"
+        else:
+            query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
+
         cursor.execute(query, (request_id,))
 
         # Fetch the data

@@ -1,8 +1,8 @@
 def total_amount_request(cursor, request_id):
     query = """
         select 
-            COALESCE(t.cash_in_advance,0) + COALESCE(h.estimated_cost,0) + COALESCE(tmap.Flight_Cost,0) + COALESCE(tbus.Bus_Cost,0) + COALESCE(ttrain.Train_Cost,0)
-            + COALESCE(tcarrental.CarRental,0) + COALESCE(taxicost.Taxi_Cost,0) as "Total Cost"
+            COALESCE(h.estimated_cost,0) + COALESCE(tmap.Flight_Cost,0) + COALESCE(tbus.Bus_Cost,0) + COALESCE(ttrain.Train_Cost,0)
+            + COALESCE(tcarrental.CarRental,0) + COALESCE(taxicost.Taxi_Cost,0) + COALESCE(t.cash_in_advance,0) as "Total Cost"
         FROM userproc05092023_1 e
         JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
         Join travelrequest t on t.user_id= e.employee_id

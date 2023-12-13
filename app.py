@@ -1280,7 +1280,10 @@ def other_expense():
 
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
+            if amount is None:
+                amount = None
+            else:
+                amount = amount[0]
 
             response_data = {
                 "amount": amount,

@@ -506,7 +506,10 @@ def request_initiate():
 
                 # Fetching the Total of the Request:
                 amount = total_amount_request(cursor, request_id)
-                amount = amount[0]
+                if amount is None:
+                    amount=0
+                else:
+                    amount = amount[0]
 
                 return {
                     "amount": amount,
@@ -668,7 +671,10 @@ def update_cost_center():
 
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
 
             return jsonify({
                 "amount": amount,
@@ -934,7 +940,17 @@ def request_hotel():
             if request_type == "travel":
                 query = "SELECT * from hotel WHERE request_id=?"
             else:
-                query = "SELECT * from expensehotel WHERE request_id=?"
+                query = """
+                    SELECT 
+                        H.*, 
+                        EH.bill_date, 
+                        EH.bill_number,
+                        EH.bill_amount,
+                        EH.bill_currency
+                    FROM hotel H
+                    LEFT JOIN expensehotel EH ON H.request_id = EH.request_id
+                    where H.request_id='DRYS021113021683';
+                """
 
             request_hotel_data = cursor.execute(query, request_id).fetchall()
             hotel_list = [{'requestId': hotel.request_id, 'cityName': hotel.city_name,
@@ -944,7 +960,10 @@ def request_hotel():
 
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
+            if amount is None:
+                amount=0
+            else:
+                amount = amount[0]
 
             response_data = {
                 "amount": amount,
@@ -1068,7 +1087,10 @@ def request_perdiem():
 
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
 
             response_data = {
                 "amount": amount,
@@ -1186,7 +1208,10 @@ def request_advcash():
 
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
-            amount = amount[0]
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
 
             response_data = {
                 "amount": amount,
@@ -1261,9 +1286,10 @@ def other_expense():
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                     "responseMessage": "Invalid Request Type Found"
                 }
-            if request_type == "expense":
-                query = "SELECT international_roaming, incident_expense from expenserequest where request_id=?"
+            if request_type == "travel":
+                query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
             else:
+
                 query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
 
             cursor.execute(query, (request_id,))
@@ -1281,7 +1307,7 @@ def other_expense():
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
-                amount = None
+                amount = 0
             else:
                 amount = amount[0]
 

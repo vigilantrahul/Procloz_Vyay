@@ -11,7 +11,7 @@ from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
 from request_list import request_list
-from TotalAmountRequest import total_amount_request
+from TotalAmountRequest import total_amount_request, total_perdiem_or_expense_amount
 from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
     clear_perdiem_data, clear_transport_data
 
@@ -477,6 +477,7 @@ def request_initiate():
         try:
             request_id = request.headers.get('requestId')
             request_type = request.headers.get('requestType')
+            request_policy = request.headers.get('requestPolicy')
             if request_type is None:
                 return {
                     "responseCode": http_status_codes.HTTP_200_OK,
@@ -507,6 +508,9 @@ def request_initiate():
                     "status": response_data["status"]
                 }
 
+                # Fetching the Total of the perdiem Amount:
+                perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
                 # Fetching the Total of the Request:
                 amount = total_amount_request(cursor, request_id)
                 if amount is None:
@@ -514,8 +518,9 @@ def request_initiate():
                 else:
                     amount = amount[0]
 
+                total_amount = perdiem_other_expense + amount
                 return {
-                    "amount": amount,
+                    "amount": total_amount,
                     "responseCode": http_status_codes.HTTP_200_OK,
                     "responseData": response_data,
                     'responseMessage': 'Travel Request Fetched Successfully'
@@ -620,6 +625,7 @@ def update_cost_center():
             organization = request.headers.get('organization')
             employee = request.headers.get('employeeId')
             request_type = request.headers.get('requestType')
+            request_policy = request.headers.get('requestPolicy')
             if request_type is None:
                 return {
                     "responseCode": http_status_codes.HTTP_200_OK,
@@ -672,6 +678,9 @@ def update_cost_center():
             else:
                 task_list = None
 
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
@@ -679,8 +688,9 @@ def update_cost_center():
             else:
                 amount = amount[0]
 
+            total_amount = amount+perdiem_other_expense
             return jsonify({
-                "amount": amount,
+                "amount": total_amount,
                 "responseCode": 200,
                 "responseMessage": "Success",
                 "data": task_list
@@ -752,6 +762,8 @@ def request_transportation():
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")  # Request ID for getting data
+            request_type = request.headers.get("requestType")  # Request Type for getting data
+            request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
 
             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
             query = """
@@ -823,13 +835,17 @@ def request_transportation():
             if current_transport:
                 transport_data.append(current_transport)
 
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             amount = amount[0]
 
+            total_amount = amount+perdiem_other_expense
             return jsonify(
                 {
-                    "amount": amount,
+                    "amount": total_amount,
                     'data': transport_data,
                     'responseMessage': "Transport Data Fetch Successfully",
                     'responseCode': http_status_codes.HTTP_200_OK
@@ -934,6 +950,8 @@ def request_hotel():
         try:
             request_id = request.headers.get('requestId')
             request_type = request.headers.get('requestType')
+            request_policy = request.headers.get('requestPolicy')
+
             if request_type is None:
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -961,6 +979,9 @@ def request_hotel():
                            "estimatedCost": hotel.estimated_cost} for hotel in
                           request_hotel_data]
 
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
@@ -968,8 +989,9 @@ def request_hotel():
             else:
                 amount = amount[0]
 
+            total_amount = amount+perdiem_other_expense
             response_data = {
-                "amount": amount,
+                "amount": total_amount,
                 "data": hotel_list,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Hotel Request Successfully Fetched"
@@ -1059,6 +1081,7 @@ def request_perdiem():
         try:
             request_id = request.headers.get("requestId")
             request_type = request.headers.get("requestType")
+            request_policy = request.headers.get("requestPolicy")
 
             if request_id is None:
                 return {
@@ -1088,6 +1111,9 @@ def request_perdiem():
                 for diem in request_perdiem_data
             ]
 
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
@@ -1095,8 +1121,10 @@ def request_perdiem():
             else:
                 amount = amount[0]
 
+            total_amount = perdiem_other_expense+amount
+
             response_data = {
-                "amount": amount,
+                "amount": total_amount,
                 "data": per_diem_list,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Hotel Request Successfully Fetched"
@@ -1199,22 +1227,19 @@ def request_advcash():
         try:
             request_id = request.headers.get("requestId")
             request_type = request.headers.get("requestType")
+            request_policy = request.headers.get("requestPolicy")
 
-            if request_id is None:
+            if request_id is None or request_type is None:
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "(DEBUG) -> RequestId is Required"
+                    "responseMessage": "(DEBUG) -> RequestId is Required or Invalid Request Type Found"
                 }
 
-            if request_type is None:
-                return {
-                    "responseCode": http_status_codes.HTTP_200_OK,
-                    "responseMessage": "Invalid Request Type Found"
-                }
-            if request_type == "expense":  # From Expense Request Data
-                query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
-            else:  # From Travel Request Data
+            if request_type == "travel":  # From Travel Request Data
                 query = "SELECT cash_in_advance, reason_cash_in_advance FROM travelrequest WHERE request_id = ?"
+            else:  # From Expense Request Data
+                query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
+
             cursor.execute(query, (request_id,))
 
             # Fetch the data
@@ -1227,6 +1252,9 @@ def request_advcash():
                 cash_in_advance = None
                 reason_cash_in_advance = None
 
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
@@ -1234,8 +1262,9 @@ def request_advcash():
             else:
                 amount = amount[0]
 
+            total_amount = amount+perdiem_other_expense
             response_data = {
-                "amount": amount,
+                "amount": total_amount,
                 "responseCode": http_status_codes.HTTP_200_OK,
                 "responseMessage": "Cash Advance Data Fetched",
                 "data": {
@@ -1319,6 +1348,8 @@ def other_expense():
         try:
             request_id = request.headers.get("requestId")
             request_type = request.headers.get("requestType")
+            request_policy = request.headers.get("requestPolicy")
+
             if request_type is None:
                 return {
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -1342,6 +1373,9 @@ def other_expense():
                 international_roaming = None
                 incident_expense = None
 
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
@@ -1349,6 +1383,7 @@ def other_expense():
             else:
                 amount = amount[0]
 
+            total_amount = amount+perdiem_other_expense
             response_data = {
                 "amount": amount,
                 "responseCode": http_status_codes.HTTP_200_OK,

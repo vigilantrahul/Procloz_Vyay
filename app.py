@@ -15,7 +15,6 @@ from TotalAmountRequest import total_amount_request
 from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
     clear_perdiem_data, clear_transport_data
 
-
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
 
@@ -62,7 +61,11 @@ def establish_db_connection():
         username = 'dbadmin'
         password = 'NPY402OYM5GUHBW2$'
 
-        connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
+        """
+            {ODBC Driver 18 for SQL Server};Server=tcp:ibproproclozdbserver.database.windows.net,1433;Database=Procloz_vyay;Uid=dbadmin;Pwd={your_password_here};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;
+        """
+        # connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
+        connection_string = "Driver={ODBC Driver 18 for SQL Server};Server=tcp:ibproproclozdbserver.database.windows.net,1433;Database=Procloz_vyay;Uid=dbadmin;Pwd=NPY402OYM5GUHBW2$;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
         connection = pyodbc.connect(connection_string)
         cursor = connection.cursor()
         return connection, cursor
@@ -507,7 +510,7 @@ def request_initiate():
                 # Fetching the Total of the Request:
                 amount = total_amount_request(cursor, request_id)
                 if amount is None:
-                    amount=0
+                    amount = 0
                 else:
                     amount = amount[0]
 
@@ -961,7 +964,7 @@ def request_hotel():
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             if amount is None:
-                amount=0
+                amount = 0
             else:
                 amount = amount[0]
 
@@ -1068,10 +1071,10 @@ def request_perdiem():
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                     "responseMessage": "Invalid Request Type Found"
                 }
-            if request_type == "expense":
-                query = "SELECT * from expenseperdiem WHERE request_id=?"
-            else:
+            if request_type == "travel":
                 query = "SELECT * from perdiem WHERE request_id=?"
+            else:
+                query = "SELECT * from expenseperdiem WHERE request_id=?"
 
             request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
 
@@ -1118,6 +1121,24 @@ def request_perdiem():
 
             request_id = data.get("requestId")
             diems = data.get("diems")
+            request_policy = request.headers.get("requestPolicy")
+
+            # Validating the data from the Request Policy:
+            policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
+            policy_data = cursor.execute(policy_query, (request_policy, )).fetchone()
+
+            if policy_data is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Policy Found"
+                }
+
+            # Validating as per the Request Policy
+            if policy_data[4] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for this request",
+                }
 
             # Validating request_id in travel Request Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
@@ -1190,9 +1211,9 @@ def request_advcash():
                     "responseCode": http_status_codes.HTTP_200_OK,
                     "responseMessage": "Invalid Request Type Found"
                 }
-            if request_type == "expense": # From Expense Request Data
+            if request_type == "expense":  # From Expense Request Data
                 query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
-            else: # From Travel Request Data
+            else:  # From Travel Request Data
                 query = "SELECT cash_in_advance, reason_cash_in_advance FROM travelrequest WHERE request_id = ?"
             cursor.execute(query, (request_id,))
 
@@ -1244,6 +1265,24 @@ def request_advcash():
             request_id = data.get("requestId")
             cash_in_advance = data.get("cash_in_advance")
             reason_cash_in_advance = data.get("reason_cash_in_advance")
+            request_policy = request.headers.get("requestPolicy")
+
+            # Validating the data from the Request Policy:
+            policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
+            policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
+
+            if policy_data is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Policy Found"
+                }
+
+            # Validating as per the Request Policy
+            if policy_data[5] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for this request",
+                }
 
             # Query To Save Advance Cash Request in Travel Request Table
             query = f"UPDATE travelrequest SET cash_in_advance=?, reason_cash_in_advance=? WHERE request_id=?"
@@ -1267,7 +1306,6 @@ def request_advcash():
 @app.route('/other-expense', methods=['GET', 'POST'])
 @jwt_required()
 def other_expense():
-
     if not connection:
         custom_error_response = {
             "responseMessage": "Database Connection Error",
@@ -1331,16 +1369,42 @@ def other_expense():
     if request.method == "POST":
         try:
             data = request.get_json()
-            if "requestPolicy" not in data or "requestId" not in data:
+            if "requestId" not in data:
                 return jsonify({
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "(DEBUG) -> Request Policy and Request ID is required Field!!"
+                    "responseMessage": "(DEBUG) -> Request ID is required Field!!"
                 })
 
             # Validation of the international expense and internation roaming as per the requestPolicy.
 
             request_id = data.get("requestId")
-            if "incident_expense" in data or "international_roaming" in data:
+            request_policy = request.headers.get("requestPolicy")
+
+            # Validating the data from the Request Policy:
+            policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
+            policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
+
+            if policy_data is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Policy Found"
+                }
+
+            # Validating as per the Request Policy for Incident Expense
+            if data['incidentExpense'] == 1 and policy_data[7] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for Incident Expense in Request",
+                }
+
+            # Validating as per the Request Policy for International Roaming
+            if data["internationalRoaming"] == 1 and policy_data[6] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for International Roaming in Request",
+                }
+
+            if "incidentExpense" in data or "internationalRoaming" in data:
                 international_roaming = data.get("international_roaming")
                 incident_expense = data.get("incident_expense")
 
@@ -1537,6 +1601,7 @@ def request_detail():
     }
 
 
+
 # ------------------------------- Expense Initiating API -------------------------------
 # 1. Expense Request Common Data Insertion:
 @app.route('/expense-request', methods=['POST'])
@@ -1603,7 +1668,8 @@ def expense_initiate():
             # Code for the Updating Request Data on that particular request id
             if expense_result is not None:
                 sql_query = "UPDATE expenserequest SET request_name = ?, request_policy = ?, start_date = ?, end_date = ?, purpose = ?, status = ? WHERE request_id = ?"
-                cursor.execute(sql_query, request_name, request_policy, start_date, end_date, purpose, status, request_id)
+                cursor.execute(sql_query, request_name, request_policy, start_date, end_date, purpose, status,
+                               request_id)
                 connection.commit()
 
                 return {
@@ -1613,7 +1679,8 @@ def expense_initiate():
 
             # Query To Insert Data in the Request Table:
             sql_query = "INSERT INTO expenserequest (user_id, request_id, request_name, request_policy, start_date, end_date, purpose, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            cursor.execute(sql_query, employee_id, request_id, request_name, request_policy, start_date, end_date, purpose, status)
+            cursor.execute(sql_query, employee_id, request_id, request_name, request_policy, start_date, end_date,
+                           purpose, status)
             connection.commit()
 
             return jsonify({"responseMessage": "Expense Request Saved", "responseCode": http_status_codes.HTTP_200_OK})
@@ -2816,6 +2883,7 @@ def travel_request_list():
 @app.route('/pull-request-list', methods=['GET'])
 def pull_request_list():
     pass
+
 
 # ------------------------------- Data Fetch API -------------------------------
 @app.route('/get-organization', methods=['GET'])

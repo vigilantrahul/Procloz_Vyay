@@ -10,7 +10,7 @@ from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
-from request_list import request_list
+from request_list import request_list, pull_request
 from TotalAmountRequest import total_amount_request, total_perdiem_or_expense_amount
 from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
     clear_perdiem_data, clear_transport_data
@@ -1636,7 +1636,6 @@ def request_detail():
     }
 
 
-
 # ------------------------------- Expense Initiating API -------------------------------
 # 1. Expense Request Common Data Insertion:
 @app.route('/expense-request', methods=['POST'])
@@ -2864,7 +2863,6 @@ def travel_request_count():
 def travel_request_list():
     try:
         employeeId = request.headers.get('employeeId')
-        # requestType = request.headers.get('requestType')
 
         # Condition of Required Data in Request
         if employeeId is None:
@@ -2879,14 +2877,18 @@ def travel_request_list():
         to_be_approve = []
         pending_req = []
         for req in data_list:
+            # Code to get the PerDiem and Other Expense Amount:
+            request_id = req[1]
+            request_policy = req[4]
+            other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
             data_dict = {
-                'request_id': req[1],
+                'request_id': request_id,
                 'request_name': req[2],
                 'start_date': req[3],
-                'request_policy': req[4],
+                'request_policy': request_policy,
                 'employee_name': req[5],
                 'status': req[7],
-                'total_amount': req[15]
+                'total_amount': (req[15] + other_expense_total)
             }
             if req[0] == 'Open Request':
                 open_req.append(data_dict)
@@ -2917,7 +2919,46 @@ def travel_request_list():
 # Total Requests List for Pull Request
 @app.route('/pull-request-list', methods=['GET'])
 def pull_request_list():
-    pass
+    employee_id = request.headers.get('employeeId')
+    data_list = request_list(cursor, employee_id)
+    open_req = []
+    total_req = []
+    to_be_approve = []
+    pending_req = []
+    for req in data_list:
+
+        # Code to get the PerDiem and Other Expense Amount:
+        request_id = req[1]
+        request_policy = req[4]
+        other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+        data_dict = {
+            'request_id': request_id,
+            'request_name': req[2],
+            'start_date': req[3],
+            'request_policy': request_policy,
+            'employee_name': req[5],
+            'status': req[7],
+            'total_amount': (req[15]+other_expense_total)
+        }
+        if req[0] == 'Open Request':
+            open_req.append(data_dict)
+        elif req[0] == 'Pending Request':
+            pending_req.append(data_dict)
+        elif req[0] == 'Total Request':
+            total_req.append(data_dict)
+        elif req[0] == 'To Be Approved':
+            to_be_approve.append(data_dict)
+
+    return {
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "data": {
+            "totalRequest": total_req,
+            "pendingRequest": pending_req,
+            "openRequest": open_req,
+            "toBeApproved": to_be_approve
+        },
+        "responseMessage": "Data Fetched Successfully"
+    }
 
 
 # ------------------------------- Data Fetch API -------------------------------
@@ -3199,7 +3240,7 @@ def notification():
 def sample_api_test():
     try:
         file = request.files['picture']
-        print(file)
+
         # Read the binary data from the file
         binary_data = file.read()
 

@@ -2920,13 +2920,10 @@ def travel_request_list():
 @app.route('/pull-request-list', methods=['GET'])
 def pull_request_list():
     employee_id = request.headers.get('employeeId')
-    data_list = request_list(cursor, employee_id)
-    open_req = []
-    total_req = []
-    to_be_approve = []
-    pending_req = []
-    for req in data_list:
+    data_list = pull_request(cursor, employee_id)
 
+    approved_req = []
+    for req in data_list:
         # Code to get the PerDiem and Other Expense Amount:
         request_id = req[1]
         request_policy = req[4]
@@ -2940,22 +2937,13 @@ def pull_request_list():
             'status': req[7],
             'total_amount': (req[15]+other_expense_total)
         }
-        if req[0] == 'Open Request':
-            open_req.append(data_dict)
-        elif req[0] == 'Pending Request':
-            pending_req.append(data_dict)
-        elif req[0] == 'Total Request':
-            total_req.append(data_dict)
-        elif req[0] == 'To Be Approved':
-            to_be_approve.append(data_dict)
+        if req[0] == 'Approved Request':
+            approved_req.append(data_dict)
 
     return {
         "responseCode": http_status_codes.HTTP_200_OK,
         "data": {
-            "totalRequest": total_req,
-            "pendingRequest": pending_req,
-            "openRequest": open_req,
-            "toBeApproved": to_be_approve
+            "approvedRequest": approved_req
         },
         "responseMessage": "Data Fetched Successfully"
     }

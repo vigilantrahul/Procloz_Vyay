@@ -455,10 +455,28 @@ def request_list(cursor, employee_id):
 
 def pull_request(cursor, employee_id):
     query = """
-            select 
+            Declare @employee_id varchar(100)
+            set @employee_id = ?
+            
+            -- Query for Approved Request
+            
+            select 'Approved Request' as Type_of_Request,
                 t.request_id,
-                COALESCE(h.estimated_cost,0) + COALESCE(tmap.Flight_Cost,0) + COALESCE(tbus.Bus_Cost,0) + COALESCE(ttrain.Train_Cost,0)
-                + COALESCE(tcarrental.CarRental,0) + COALESCE(taxicost.Taxi_Cost,0) + COALESCE(t.cash_in_advance,0) as "Total Cost"
+                t.request_name,
+                t.start_date,
+                t.request_policy,
+                e.employee_first_name,
+                e.employee_id,
+                t.status,
+                t.cash_in_advance,
+                h.estimated_cost hotel_estimated_cost,
+                tmap.Flight_Cost,
+                tbus.Bus_Cost,
+                ttrain.Train_Cost,
+                tcarrental.CarRental,
+                taxicost.Taxi_Cost,
+                COALESCE(t.cash_in_advance,0) + COALESCE(h.estimated_cost,0) + COALESCE(tmap.Flight_Cost,0) + COALESCE(tbus.Bus_Cost,0) + COALESCE(ttrain.Train_Cost,0)
+                + COALESCE(tcarrental.CarRental,0) + COALESCE(taxicost.Taxi_Cost,0) as "Total Cost"
             FROM userproc05092023_1 e
             JOIN userproc05092023_1 m ON e.manager_id = m.employee_id
             Join travelrequest t on t.user_id= e.employee_id
@@ -481,6 +499,10 @@ def pull_request(cursor, employee_id):
             Left Join (select t.request_id, sum(tmap.estimated_cost) as "Taxi_Cost"  from transport t left join transporttripmapping tmap on t.id = tmap.transport
                         where t.transport_type = 'taxi' group by t.request_id) taxicost
                         on taxicost.request_id = t.request_id
-            WHERE t.request_id=?
+            WHERE e.employee_id = @employee_id 
+            and t.status in ('approved')
         """
+    cursor.execute(query, (employee_id, ))
+    all_approved_request = cursor.fetchall()
+    return all_approved_request
 

@@ -3223,21 +3223,21 @@ def notification():
             }
 
 
-@app.route('/sample-api-test', methods=['GET'])
+@app.route('/sample-api-test', methods=['POST'])
 # @jwt_required()
 def sample_api_test():
     try:
-        file = request.files['picture']
-
-        # Read the binary data from the file
-        binary_data = file.read()
-
-        # Execute the SQL query
-        query = "INSERT INTO SampleTable (picture) VALUES (?)"
-        cursor.execute(query, (binary_data,))
+        # if 'file' not in request.files:
+        #     return 'No file part'
+        # file = request.files['file']
+        # # Read the binary data from the file
+        # binary_data = file.read()
+        # # Execute the SQL query
+        # query = "INSERT INTO SampleTable (picture) VALUES (?)"
+        # cursor.execute(query, (binary_data,))
 
         # Commit the changes to the database
-        connection.commit()
+        # connection.commit()
 
         return "File uploaded successfully"
     except Exception as err:

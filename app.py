@@ -1,11 +1,12 @@
 import os
+from werkzeug.utils import secure_filename
 import random
 import sys
 import time
 from datetime import timedelta, datetime, date
 import pyodbc
 from flask_mail import Mail, Message
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, Response
 from flask_cors import CORS
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
@@ -60,10 +61,6 @@ def establish_db_connection():
         database_name = 'Procloz_vyay'
         username = 'dbadmin'
         password = 'NPY402OYM5GUHBW2$'
-
-        """
-            {ODBC Driver 18 for SQL Server};Server=tcp:ibproproclozdbserver.database.windows.net,1433;Database=Procloz_vyay;Uid=dbadmin;Pwd={your_password_here};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;
-        """
         # connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
         connection_string = "Driver={ODBC Driver 18 for SQL Server};Server=tcp:ibproproclozdbserver.database.windows.net,1433;Database=Procloz_vyay;Uid=dbadmin;Pwd=NPY402OYM5GUHBW2$;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
         connection = pyodbc.connect(connection_string)
@@ -688,7 +685,7 @@ def update_cost_center():
             else:
                 amount = amount[0]
 
-            total_amount = amount+perdiem_other_expense
+            total_amount = amount + perdiem_other_expense
             return jsonify({
                 "amount": total_amount,
                 "responseCode": 200,
@@ -842,7 +839,7 @@ def request_transportation():
             amount = total_amount_request(cursor, request_id)
             amount = amount[0]
 
-            total_amount = amount+perdiem_other_expense
+            total_amount = amount + perdiem_other_expense
             return jsonify(
                 {
                     "amount": total_amount,
@@ -989,7 +986,7 @@ def request_hotel():
             else:
                 amount = amount[0]
 
-            total_amount = amount+perdiem_other_expense
+            total_amount = amount + perdiem_other_expense
             response_data = {
                 "amount": total_amount,
                 "data": hotel_list,
@@ -1121,7 +1118,7 @@ def request_perdiem():
             else:
                 amount = amount[0]
 
-            total_amount = perdiem_other_expense+amount
+            total_amount = perdiem_other_expense + amount
 
             response_data = {
                 "amount": total_amount,
@@ -1153,7 +1150,7 @@ def request_perdiem():
 
             # Validating the data from the Request Policy:
             policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
-            policy_data = cursor.execute(policy_query, (request_policy, )).fetchone()
+            policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
 
             if policy_data is None:
                 return {
@@ -1262,7 +1259,7 @@ def request_advcash():
             else:
                 amount = amount[0]
 
-            total_amount = amount+perdiem_other_expense
+            total_amount = amount + perdiem_other_expense
             response_data = {
                 "amount": total_amount,
                 "responseCode": http_status_codes.HTTP_200_OK,
@@ -1383,7 +1380,7 @@ def other_expense():
             else:
                 amount = amount[0]
 
-            total_amount = amount+perdiem_other_expense
+            total_amount = amount + perdiem_other_expense
             response_data = {
                 "amount": amount,
                 "responseCode": http_status_codes.HTTP_200_OK,
@@ -2935,7 +2932,7 @@ def pull_request_list():
             'request_policy': request_policy,
             'employee_name': req[5],
             'status': req[7],
-            'total_amount': (req[15]+other_expense_total)
+            'total_amount': (req[15] + other_expense_total)
         }
         if req[0] == 'Approved Request':
             approved_req.append(data_dict)
@@ -3223,29 +3220,109 @@ def notification():
             }
 
 
-@app.route('/sample-api-test', methods=['POST'])
+# Replace this with your desired upload folder
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure the UPLOAD_FOLDER exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Set the allowed file extensions
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route('/sample-api-test', methods=['GET', 'POST'])
 # @jwt_required()
 def sample_api_test():
-    try:
-        # if 'file' not in request.files:
-        #     return 'No file part'
-        # file = request.files['file']
-        # # Read the binary data from the file
-        # binary_data = file.read()
-        # # Execute the SQL query
-        # query = "INSERT INTO SampleTable (picture) VALUES (?)"
-        # cursor.execute(query, (binary_data,))
+    if request.method == 'GET':
+        try:
+            base_folder = os.getcwd()
+            data = request.get_json()
+            req_file_path = data.get("filePath")
+            file_path = base_folder+'\\'+req_file_path
+            print(file_path)
 
-        # Commit the changes to the database
-        # connection.commit()
+            if not os.path.exists(file_path):
+                return {
+                    'responseMessage': 'File not found',
+                    'responseCode': http_status_codes.HTTP_404_NOT_FOUND
+                }
 
-        return "File uploaded successfully"
-    except Exception as err:
-        return {
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-            "responseMessage": "Something Went Wrong!!",
-            "error": str(err)
-        }
+            with open(file_path, 'rb') as file:
+                file_content = file.read()
+
+            # Determine the content type based on the file extension
+            file_extension = os.path.splitext(file_path)[1].lower()
+
+            if file_extension == '.pdf':
+                content_type = 'application/pdf'
+            elif file_extension in ['.png', '.jpg', '.jpeg']:
+                content_type = 'image/jpeg'
+            else:
+                # Add additional cases for other file types as needed
+                return {
+                    "responseMessage": "Unsupported file type",
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+                }
+            # Return the file content as a response with the appropriate content type
+            return Response(file_content, content_type=content_type)
+        except FileNotFoundError:
+            return {
+                'responseMessage': 'File not found',
+                'responseCode': http_status_codes.HTTP_404_NOT_FOUND
+            }
+
+    elif request.method == 'POST':
+        try:
+            # Check if the 'file' key is in the request
+            if 'file' not in request.files:
+                return jsonify({
+                    "responseMessage": "Invalid Data Found",
+                    "responseCode": 400,
+                })
+            file = request.files['file']
+
+            # Check if a file is selected
+            if file.filename == '':
+                return jsonify({
+                    'responseMessage': 'No selected file',
+                    'responseCode': 400
+                })
+
+            # Check if the file has an allowed extension
+            if not allowed_file(file.filename):
+                return jsonify({
+                    'responseMessage': 'Invalid file extension',
+                    'responseCode': 400
+                })
+
+            # Save the file to the upload folder
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+
+            # Additional logic for database insertion can go here
+            # Save information to the database
+            query = "INSERT INTO SampleTable(picture) VALUES(?)"
+            cursor.execute(query, (file_path,))
+            connection.commit()
+
+            # For simplicity, let's just return the file path
+            return jsonify({
+                'responseMessage': 'File uploaded successfully',
+                'file_path': file_path,
+                'responseCode': 200
+            })
+        except Exception as err:
+            return {
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong!!",
+                "error": str(err)
+            }
 
 
 if __name__ == '__main__':

@@ -3269,21 +3269,29 @@ def get_folder_path(folder_name):
 @app.route('/sample-api-test', methods=['GET', 'POST'])
 # @jwt_required()
 def sample_api_test():
+    print("Function Called")
     if request.method == 'GET':
         try:
+            print("Here i am ")
             data = request.get_json()
+            print("Data: ", data)
             file_path = data.get('filePath')
+            print("File Path: ", file_path)
             current_path = os.getcwd()
+            print("Current_path")
             full_path = os.path.join(current_path, file_path)
 
+            # return "Hello"
             return {
-                "filePath: ", file_path,
-                "fullPath: ", full_path,
-                "current_path: ", current_path,
-                "responseCode: ", http_status_codes.HTTP_200_OK
+                # "Hello": "Hii"
+                "filePath": file_path,
+                "fullPath": full_path,
+                "current_path": current_path,
+                "responseCode": http_status_codes.HTTP_200_OK
             }
-        except FileNotFoundError:
+        except Exception as err:
             return {
+                'error': str(err),
                 'responseMessage': 'File not found',
                 'responseCode': http_status_codes.HTTP_404_NOT_FOUND
             }

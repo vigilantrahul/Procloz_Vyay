@@ -3271,7 +3271,17 @@ def get_folder_path(folder_name):
 def sample_api_test():
     if request.method == 'GET':
         try:
-            pass
+            data = request.get_json()
+            file_path = data.get('filePath')
+            current_path = os.getcwd()
+            full_path = os.path.join(current_path, file_path)
+
+            return {
+                "filePath: ", file_path,
+                "fullPath: ", full_path,
+                "current_path: ", current_path,
+                "responseCode: ", http_status_codes.HTTP_200_OK
+            }
         except FileNotFoundError:
             return {
                 'responseMessage': 'File not found',
@@ -3325,6 +3335,7 @@ def sample_api_test():
                 'responseMessage': 'File uploaded successfully',
                 'file_path': random_string,
                 'folder_path': folder_path,
+                'current_path': current_path,
                 'responseCode': 200
             })
         except Exception as err:

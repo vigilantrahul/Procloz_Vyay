@@ -3235,41 +3235,43 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def list_folder_structure(folder_path):
+    try:
+        items = os.listdir(folder_path)
+
+        # Create a list to store the folder structure
+        folder_structure = []
+
+        for item in items:
+            item_path = os.path.join(folder_path, item)
+            if os.path.isdir(item_path):
+                # Recursive call for subdirectories
+                subfolder_structure = list_folder_structure(item_path)
+                folder_structure.append({'Folder': item, 'Contents': subfolder_structure})
+            else:
+                folder_structure.append({'File': item})
+
+        return folder_structure
+    except FileNotFoundError:
+        return None
+
+
+def get_folder_path(folder_name):
+    current_directory = os.getcwd()
+    folder_path = os.path.join(current_directory, folder_name)
+
+    if os.path.exists(folder_path) and os.path.isdir(folder_path):
+        return folder_path
+    else:
+        return None
+
+
 @app.route('/sample-api-test', methods=['GET', 'POST'])
 # @jwt_required()
 def sample_api_test():
     if request.method == 'GET':
         try:
-            base_folder = os.getcwd()
-            data = request.get_json()
-            req_file_path = data.get("filePath")
-            file_path = base_folder+'\\'+req_file_path
-            print(file_path)
-
-            if not os.path.exists(file_path):
-                return {
-                    'responseMessage': 'File not found',
-                    'responseCode': http_status_codes.HTTP_404_NOT_FOUND
-                }
-
-            with open(file_path, 'rb') as file:
-                file_content = file.read()
-
-            # Determine the content type based on the file extension
-            file_extension = os.path.splitext(file_path)[1].lower()
-
-            if file_extension == '.pdf':
-                content_type = 'application/pdf'
-            elif file_extension in ['.png', '.jpg', '.jpeg']:
-                content_type = 'image/jpeg'
-            else:
-                # Add additional cases for other file types as needed
-                return {
-                    "responseMessage": "Unsupported file type",
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
-                }
-            # Return the file content as a response with the appropriate content type
-            return Response(file_content, content_type=content_type)
+            pass
         except FileNotFoundError:
             return {
                 'responseMessage': 'File not found',
@@ -3302,19 +3304,27 @@ def sample_api_test():
 
             # Save the file to the upload folder
             filename = secure_filename(file.filename)
+
+            folder_name_to_check = 'uploads'
+            folder_path = get_folder_path(folder_name_to_check)
+            print("folder_path: ", folder_path)
+            current_path = os.getcwd()
+
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
 
+            random_string = os.path.join(current_path, file_path)
             # Additional logic for database insertion can go here
             # Save information to the database
             query = "INSERT INTO SampleTable(picture) VALUES(?)"
-            cursor.execute(query, (file_path,))
+            cursor.execute(query, (random_string,))
             connection.commit()
 
             # For simplicity, let's just return the file path
             return jsonify({
                 'responseMessage': 'File uploaded successfully',
-                'file_path': file_path,
+                'file_path': random_string,
+                'folder_path': folder_path,
                 'responseCode': 200
             })
         except Exception as err:

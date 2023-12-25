@@ -3281,9 +3281,7 @@ def sample_api_test():
             print("Current_path")
             full_path = os.path.join(current_path, file_path)
 
-            # return "Hello"
             return {
-                # "Hello": "Hii"
                 "filePath": file_path,
                 "fullPath": full_path,
                 "current_path": current_path,

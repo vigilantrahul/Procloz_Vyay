@@ -1827,16 +1827,10 @@ def expense_hotel():
 
                 file_path = file_data["file_path"]
 
-                # Construct the SQL query for bulk insert
-                values = ', '.join([
-                    f"('{bill_date}', '{bill_number}', '{bill_currency}', {bill_amount}, '{expense_type}', '{establishment_name}', '{final_amount}', '{file_path}', '{request_id}')"
-
-                ])
-                query = f"INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file, request_id) VALUES {values}"
-
-            # Execute the query
-            cursor.execute(query)
-            connection.commit()
+                # Execute the query
+                query = f"INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file, request_id) VALUES (?,?,?,?,?,?,?,?,?)"
+                cursor.execute(query, (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_path, request_id))
+                connection.commit()
 
             return jsonify({
                 "responseCode": http_status_codes.HTTP_200_OK,

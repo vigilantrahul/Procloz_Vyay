@@ -1818,9 +1818,17 @@ def expense_hotel():
                 expense_type = obj.get('expenseType')
                 establishment_name = obj.get('establishmentName')
                 final_amount = obj.get('finalAmount')
-                file = obj.get('file')
+                file_info = obj.get('file', {})
+                file = file_info.get('file')
 
                 # Code to upload the file:
+                if file is None:
+                    return {
+                        "file_data": file,
+                        "responseMessage": "File Not Found",
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    }
+
                 file_data = upload_file(file)
                 if "file_path" not in file_data:
                     return file_data
@@ -3267,7 +3275,7 @@ def sample_api_test():
             print("File Path: ", file_path)
             current_path = os.getcwd()
             print("Current_path")
-            full_path = current_path+file_path
+            full_path = current_path + file_path
 
             return {
                 "filePath": file_path,

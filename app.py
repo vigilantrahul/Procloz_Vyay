@@ -1771,9 +1771,23 @@ def expense_hotel():
 
     if request.method == "POST":
         try:
-            data = request.get_json()
-            request_id = data.get('requestId')
-            objects = data.get('object', [])  # Accessing the array of objects
+            request_id = request.form.get('requestId')
+            # Initialize a list to store the objects
+            objects = []
+
+            # Iterate over form data keys and extract objects
+            for key, value in request.form.items():
+                if key.startswith('object[') and key.endswith(']'):
+                    # Parse keys like 'object[0][departureDate]' to extract values
+                    _, index, field = key.split('[')
+                    index = int(index[:-1])  # Extract the index from '0]'
+
+                    # Create dictionaries for each index if not present
+                    while len(objects) <= index:
+                        objects.append({})
+
+                    # Assign values to the corresponding field in the dictionary
+                    objects[index][field] = value
 
             # Validating the Request ID in the Travel Request Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"

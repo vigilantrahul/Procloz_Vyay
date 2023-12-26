@@ -1758,10 +1758,9 @@ def expense_update_cost_center():
 
 
 # 4. Request Hotel on Travel
-@app.route('/expense-hotel', methods=['POST'])
+@app.route('/expense-hotel', methods=['GET', 'POST'])
 # @jwt_required()
 def expense_hotel():
-    print("Function Called")
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -1771,6 +1770,16 @@ def expense_hotel():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            pass
+        except Exception as err:
+            return {
+                "reason": str(err),
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong"
+            }
 
     if request.method == "POST":
         try:
@@ -1792,8 +1801,6 @@ def expense_hotel():
                     # Assign values to the corresponding field in the dictionary
                     value = request.form.get(key) if key in request.form else request.files.get(key)
                     objects[index][field] = value
-
-            print("Object: ", objects)
 
             # Validating the Request ID in the Travel Request Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
@@ -1817,40 +1824,26 @@ def expense_hotel():
 
             # Now 'objects' is a list of dictionaries
             for obj in objects:
-                print("obj: ", obj)
                 bill_date = obj.get('billDate')
-                print("bill_date: ", bill_date)
                 bill_number = obj.get('billNumber')
-                print("bill_number: ", bill_number)
                 bill_currency = obj.get('billCurrency')
-                print("bill_currency: ", bill_currency)
                 bill_amount = obj.get('billAmount')
-                print("bill_amount: ", bill_amount)
                 expense_type = obj.get('expenseType')
-                print("expense_type: ", expense_type)
                 establishment_name = obj.get('establishmentName')
-                print("establishment_name: ", establishment_name)
                 final_amount = obj.get('finalAmount')
-                print("final_amount: ", final_amount)
                 file = obj.get('file')
-                print("file: ", file)
 
                 file_data = upload_file(file)
-                print("File_Data: ", file_data)
 
                 if "file_path" not in file_data:
                     return file_data
 
                 file_path = file_data["file_path"]
-                print("file_path: ", file_path)
 
                 # Execute the query
                 query = "INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, request_id) VALUES (?,?,?,?,?,?,?,?,?)"
-                print("Query: ", query)
                 cursor.execute(query, (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_path, request_id))
-                print("Query Executed")
                 connection.commit()
-                print("Query Done")
 
             return jsonify({
                 "responseCode": http_status_codes.HTTP_200_OK,
@@ -3288,6 +3281,40 @@ def sample_api_test():
             current_path = os.getcwd()
             print("Current_path")
             full_path = current_path + file_path
+            print("Full Path: ", full_path)
+            base_folder = os.getcwd()
+            print("Base Folder: ", base_folder)
+            data = request.get_json()
+            print("Data: ", data)
+            req_file_path = data.get("filePath")
+            print("Request File Path: ", req_file_path)
+            file_path = base_folder + '\\' + req_file_path
+            print(file_path)
+
+            if not os.path.exists(file_path):
+                return {
+                    'responseMessage': 'File not found',
+                    'responseCode': http_status_codes.HTTP_404_NOT_FOUND
+                }
+
+            with open(file_path, 'rb') as file:
+                file_content = file.read()
+
+            # Determine the content type based on the file extension
+            file_extension = os.path.splitext(file_path)[1].lower()
+
+            if file_extension == '.pdf':
+                content_type = 'application/pdf'
+            elif file_extension in ['.png', '.jpg', '.jpeg']:
+                content_type = 'image/jpeg'
+            else:
+                # Add additional cases for other file types as needed
+                return {
+                    "responseMessage": "Unsupported file type",
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+                }
+            # Return the file content as a response with the appropriate content type
+            # return Response(file_content, content_type=content_type)
 
             return {
                 "filePath": file_path,

@@ -1818,11 +1818,11 @@ def expense_hotel():
                 expense_type = obj.get('expenseType')
                 establishment_name = obj.get('establishmentName')
                 final_amount = obj.get('finalAmount')
-                file = obj.get('file')
-                # file = file_info.get('file')
+                file_info = obj.get('file', {})
+                file = file_info.get('file')
 
                 # Code to upload the file:
-                if file is None:
+                if file is {}:
                     return {
                         "file_data": file,
                         "responseMessage": "File Not Found",

@@ -3279,7 +3279,7 @@ def sample_api_test():
             print("File Path: ", file_path)
             current_path = os.getcwd()
             print("Current_path")
-            full_path = os.path.join(current_path, file_path)
+            full_path = current_path+file_path
 
             return {
                 "filePath": file_path,

@@ -1829,7 +1829,7 @@ def expense_hotel():
 
                 # Construct the SQL query for bulk insert
                 values = ', '.join([
-                    f"('{[bill_date]}', '{[bill_number]}', '{[bill_currency]}', {[bill_amount]}, '{[expense_type]}', '{[establishment_name]}', '{[final_amount]}', '{[file_path]}', '{[request_id]}')"
+                    f"('{bill_date}', '{bill_number}', '{bill_currency}', {bill_amount}, '{expense_type}', '{establishment_name}', '{final_amount}', '{file_path}', '{request_id}')"
 
                 ])
                 query = f"INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file, request_id) VALUES {values}"

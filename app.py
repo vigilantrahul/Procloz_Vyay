@@ -742,7 +742,7 @@ def update_cost_center():
 
 
 # 3. Request Transportation on Travel
-@app.route('/request-transport', methods=['GET', 'POST'])
+@app.route('/request-transport', methods=['GET'])
 @jwt_required()
 def request_transportation():
     # Validation for the Connection on DB/Server
@@ -854,78 +854,6 @@ def request_transportation():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                 "responseMessage": "Something Went Wrong",
                 "reason": str(err)
-            })
-
-    if request.method == "POST":
-        try:
-            data = request.get_json()
-            transport_type = request.args.get('transportType')
-
-            # Validation of None Value
-            if transport_type is None:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Choose Valid Transport Type"
-                }
-
-            # Validation of Data:
-            if "requestId" not in data or "employeeId" not in data:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Required Fields are Empty"
-                }
-
-            request_Id = data.get('requestId')
-            transports = data.get('transports')
-            employee_id = data.get('employeeId')
-
-            # Validating the Request_ID already exist or not:
-            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-            cursor.execute(query, request_Id)
-            result = cursor.fetchone()
-
-            if result is None:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Request ID Not Exists!!"
-                }
-
-            if transport_type == "flight":
-                if transports is None:
-                    return {
-                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                        "responseMessage": "Required Fields are Empty"
-                    }
-                result = flight_data(cursor, connection, request_Id, transports, employee_id)
-                return result
-            elif transport_type == "train":
-                if transports is None:
-                    return {
-                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                        "responseMessage": "Required Fields are Empty"
-                    }
-                result = train_data(cursor, connection, request_Id, transports, employee_id)
-                return result
-            elif transport_type == "bus":
-                if transports is None:
-                    return {
-                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                        "responseMessage": "Required Fields are Empty"
-                    }
-                result = bus_data(cursor, connection, request_Id, transports, employee_id)
-                return result
-            elif transport_type == "taxi":
-
-                result = taxi_data(cursor, connection, data)
-                return result
-            elif transport_type == "carRental":
-                result = carrental_data(cursor, connection, data)
-                return result
-        except Exception as err:
-            return jsonify({
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                "responseMessage": "Something Went Wrong",
-                "reason": str(err)  # Error Code comes here
             })
 
 
@@ -1634,6 +1562,56 @@ def request_detail():
 
 
 # ------------------------------- Expense Initiating API -------------------------------
+
+# API to Upload File
+def upload_file(file):
+    try:
+        # Check if a file is selected
+        if file.filename == '':
+            return jsonify({
+                'responseMessage': 'No selected file',
+                'responseCode': 400
+            })
+
+        # Check if the file has an allowed extension
+        if not allowed_file(file.filename):
+            return jsonify({
+                'responseMessage': 'Invalid file extension',
+                'responseCode': 400
+            })
+
+        # Save the file to the upload folder
+        filename = secure_filename(file.filename)
+
+        folder_name_to_check = 'uploads'
+        folder_path = get_folder_path(folder_name_to_check)
+        current_path = os.getcwd()
+
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        random_string = os.path.join(current_path, file_path)
+        # Additional logic for database insertion can go here
+        # Save information to the database
+        query = "INSERT INTO SampleTable(picture) VALUES(?)"
+        cursor.execute(query, (random_string,))
+        connection.commit()
+
+        # For simplicity, let's just return the file path
+        return jsonify({
+            'responseMessage': 'File uploaded successfully',
+            'file_path': file_path,
+            'folder_path': folder_path,
+            'current_path': current_path,
+        })
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong!!",
+            "error": str(err)
+        }
+
+
 # 1. Expense Request Common Data Insertion:
 @app.route('/expense-request', methods=['POST'])
 @jwt_required()
@@ -1794,16 +1772,10 @@ def expense_hotel():
     if request.method == "POST":
         try:
             data = request.get_json()
-            # Validation of Data:
-            if "requestId" not in data or "hotels" not in data:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "Required Fields are Empty"
-                }
+            request_id = data.get('requestId')
+            objects = data.get('object', [])  # Accessing the array of objects
 
-            # Validating request_id in travel Request Table:
-            request_id = data.get("requestId")
-            hotels = data.get("hotels")
+            # Validating the Request ID in the Travel Request Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
             cursor.execute(query, request_id)
             result = cursor.fetchone()
@@ -1812,15 +1784,6 @@ def expense_hotel():
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
                     "responseMessage": "Request ID Not Exists!!"
                 }
-
-            if len(hotels) < 0 or len(hotels) > 5:
-                return {
-                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
-                }
-
-            for hotel in hotels:
-                hotel['requestId'] = request_id
 
             # Validation for the hotel data in Expense Hotel Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM expensehotel WHERE request_id = ?"
@@ -1832,13 +1795,30 @@ def expense_hotel():
                 cursor.execute(sql_query, (request_id,))
                 connection.commit()
 
-            # Construct the SQL query for bulk insert
-            values = ', '.join([
-                f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['billDate']}', '{hotel['billNumber']}', '{hotel['billCurrency']}', {hotel['billAmount']}, '{hotel['expenseType']}', '{hotel['establishmentName']}', '{hotel['finalAmount']}', '{hotel['requestId']}')"
-                for hotel in hotels
-            ])
+            # Now 'objects' is a list of dictionaries
+            for obj in objects:
+                bill_date = obj.get('billDate')
+                bill_number = obj.get('billNumber')
+                bill_currency = obj.get('billCurrency')
+                bill_amount = obj.get('billAmount')
+                expense_type = obj.get('expenseType')
+                establishment_name = obj.get('establishmentName')
+                final_amount = obj.get('finalAmount')
+                file = obj.get('file')
 
-            query = f"INSERT INTO expensehotel (city_name, check_in, check_out, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, request_id) VALUES {values}"
+                # Code to upload the file:
+                file_data = upload_file(file)
+                if "file_path" not in file_data:
+                    return file_data
+
+                file_path = file_data["file_path"]
+
+                # Construct the SQL query for bulk insert
+                values = ', '.join([
+                    f"('{[bill_date]}', '{[bill_number]}', '{[bill_currency]}', {[bill_amount]}, '{[expense_type]}', '{[establishment_name]}', '{[final_amount]}', '{[file_path]}', '{[request_id]}')"
+
+                ])
+                query = f"INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file, request_id) VALUES {values}"
 
             # Execute the query
             cursor.execute(query)
@@ -3323,7 +3303,6 @@ def sample_api_test():
 
             folder_name_to_check = 'uploads'
             folder_path = get_folder_path(folder_name_to_check)
-            print("folder_path: ", folder_path)
             current_path = os.getcwd()
 
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -3339,7 +3318,7 @@ def sample_api_test():
             # For simplicity, let's just return the file path
             return jsonify({
                 'responseMessage': 'File uploaded successfully',
-                'file_path': random_string,
+                'file_path': file_path,
                 'folder_path': folder_path,
                 'current_path': current_path,
                 'responseCode': 200

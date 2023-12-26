@@ -1,4 +1,5 @@
 import os
+import re
 from werkzeug.utils import secure_filename
 import random
 import sys
@@ -1598,12 +1599,13 @@ def upload_file(file):
         connection.commit()
 
         # For simplicity, let's just return the file path
-        return jsonify({
+        return {
             'responseMessage': 'File uploaded successfully',
             'file_path': file_path,
             'folder_path': folder_path,
             'current_path': current_path,
-        })
+        }
+
     except Exception as err:
         return {
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1757,8 +1759,9 @@ def expense_update_cost_center():
 
 # 4. Request Hotel on Travel
 @app.route('/expense-hotel', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 def expense_hotel():
+    print("Function Called")
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -1772,22 +1775,25 @@ def expense_hotel():
     if request.method == "POST":
         try:
             request_id = request.form.get('requestId')
+
             # Initialize a list to store the objects
             objects = []
 
-            # Iterate over form data keys and extract objects
-            for key, value in request.form.items():
-                if key.startswith('objects[') and key.endswith(']'):
-                    # Parse keys like 'object[0][departureDate]' to extract values
-                    _, index, field = key.split('[')
-                    index = int(index[:-1])  # Extract the index from '0]'
+            for key in set(request.form.keys()) | set(request.files.keys()):
+                match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
+                if match:
+                    index, field = map(match.group, [1, 2])
+                    index = int(index)
 
                     # Create dictionaries for each index if not present
                     while len(objects) <= index:
                         objects.append({})
 
                     # Assign values to the corresponding field in the dictionary
+                    value = request.form.get(key) if key in request.form else request.files.get(key)
                     objects[index][field] = value
+
+            print("Object: ", objects)
 
             # Validating the Request ID in the Travel Request Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
@@ -1811,34 +1817,40 @@ def expense_hotel():
 
             # Now 'objects' is a list of dictionaries
             for obj in objects:
+                print("obj: ", obj)
                 bill_date = obj.get('billDate')
+                print("bill_date: ", bill_date)
                 bill_number = obj.get('billNumber')
+                print("bill_number: ", bill_number)
                 bill_currency = obj.get('billCurrency')
+                print("bill_currency: ", bill_currency)
                 bill_amount = obj.get('billAmount')
+                print("bill_amount: ", bill_amount)
                 expense_type = obj.get('expenseType')
+                print("expense_type: ", expense_type)
                 establishment_name = obj.get('establishmentName')
+                print("establishment_name: ", establishment_name)
                 final_amount = obj.get('finalAmount')
-                file_info = obj.get('file', {})
-                file = file_info.get('file')
-
-                # Code to upload the file:
-                if file is {}:
-                    return {
-                        "file_data": file,
-                        "responseMessage": "File Not Found",
-                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-                    }
+                print("final_amount: ", final_amount)
+                file = obj.get('file')
+                print("file: ", file)
 
                 file_data = upload_file(file)
+                print("File_Data: ", file_data)
+
                 if "file_path" not in file_data:
                     return file_data
 
                 file_path = file_data["file_path"]
+                print("file_path: ", file_path)
 
                 # Execute the query
-                query = f"INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file, request_id) VALUES (?,?,?,?,?,?,?,?,?)"
+                query = "INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, request_id) VALUES (?,?,?,?,?,?,?,?,?)"
+                print("Query: ", query)
                 cursor.execute(query, (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_path, request_id))
+                print("Query Executed")
                 connection.commit()
+                print("Query Done")
 
             return jsonify({
                 "responseCode": http_status_codes.HTTP_200_OK,

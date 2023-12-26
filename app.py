@@ -1777,7 +1777,7 @@ def expense_hotel():
 
             # Iterate over form data keys and extract objects
             for key, value in request.form.items():
-                if key.startswith('object[') and key.endswith(']'):
+                if key.startswith('objects[') and key.endswith(']'):
                     # Parse keys like 'object[0][departureDate]' to extract values
                     _, index, field = key.split('[')
                     index = int(index[:-1])  # Extract the index from '0]'

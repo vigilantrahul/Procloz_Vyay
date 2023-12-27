@@ -5,6 +5,10 @@ import random
 import sys
 import time
 from datetime import timedelta, datetime, date
+import datetime
+import uuid
+from io import BytesIO
+from azure.storage.blob import BlobServiceClient, ContainerClient
 import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session, Response
@@ -55,13 +59,13 @@ def invalid_token_callback(error):
     })
 
 
-# ----------------------------- SERVER Configuration -----------------------------
+# ----------------------------- SERVER DATABASE Configuration -----------------------------
 def establish_db_connection():
     try:
-        server_name = 'ibproproclozdbserver.database.windows.net'
-        database_name = 'Procloz_vyay'
-        username = 'dbadmin'
-        password = 'NPY402OYM5GUHBW2$'
+        # server_name = 'ibproproclozdbserver.database.windows.net'
+        # database_name = 'Procloz_vyay'
+        # username = 'dbadmin'
+        # password = 'NPY402OYM5GUHBW2$'
         # connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server={server_name};Database={database_name};UID={username};PWD={password}"
         connection_string = "Driver={ODBC Driver 18 for SQL Server};Server=tcp:ibproproclozdbserver.database.windows.net,1433;Database=Procloz_vyay;Uid=dbadmin;Pwd=NPY402OYM5GUHBW2$;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
         connection = pyodbc.connect(connection_string)
@@ -86,6 +90,17 @@ app.config['MAIL_USERNAME'] = 'noreply@vyay.tech'  # Replace with your email
 app.config['MAIL_PASSWORD'] = 'BGweq589'  # Replace with your email password
 
 mail = Mail(app)
+
+# ------------------------------- STORAGE CONFIGURATION AZURE -------------------------------
+account_name = 'proclozstorage'
+account_key = '8jVT4F2jtlc259K+WYq8QoW8LEYEr4R6HqVZImkoUXJCdz7x9E4+5KzIkz2Pb6dTQV32BGC7LVWV+AStad34nw=='
+container_name = 'internaldata'
+
+# Create a BlobServiceClient
+blob_service_client = BlobServiceClient(account_url=f"https://{account_name}.blob.core.windows.net", credential=account_key)
+
+# Create a ContainerClient
+container_client = blob_service_client.get_container_client(container_name)
 
 
 # ------------------------------- Debug Log API -------------------------------
@@ -3273,28 +3288,14 @@ def sample_api_test():
     if request.method == 'GET':
         try:
             data = request.get_json()
-            current_path = os.getcwd()
-            req_file_path = data.get("filePath")
-            file_path = current_path + '/' + req_file_path
-            file_list = []
-            test_directory = current_path
+            file_name = data.get("fileName")
 
-            if os.path.exists(test_directory) and os.path.isdir(test_directory):
-                file_list = os.listdir(test_directory)
-
-            if not os.path.exists(file_path):
-                return {
-                    'file_list': file_list,
-                    'file_path': file_path,
-                    'responseMessage': 'File not found',
-                    'responseCode': http_status_codes.HTTP_404_NOT_FOUND
-                }
-
-            with open(file_path, 'rb') as file:
-                file_content = file.read()
+            # Assume file_name is the blob name in the container
+            blob_client = container_client.get_blob_client(file_name)
+            blob_data = blob_client.download_blob().readall()
 
             # Determine the content type based on the file extension
-            file_extension = os.path.splitext(file_path)[1].lower()
+            file_extension = os.path.splitext(file_name)[1].lower()
 
             if file_extension == '.pdf':
                 content_type = 'application/pdf'
@@ -3306,14 +3307,9 @@ def sample_api_test():
                     "responseMessage": "Unsupported file type",
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
                 }
-            # Return the file content as a response with the appropriate content type
-            return Response(file_content, content_type=content_type)
 
-            # return {
-            #     "filePath": file_path,
-            #     "current_path": current_path,
-            #     "responseCode": http_status_codes.HTTP_200_OK
-            # }
+            # Return the file content as a response with the appropriate content type
+            return Response(blob_data, content_type=content_type)
         except Exception as err:
             return {
                 'error': str(err),
@@ -3323,58 +3319,38 @@ def sample_api_test():
 
     elif request.method == 'POST':
         try:
-            # Check if the 'file' key is in the request
             if 'file' not in request.files:
-                return jsonify({
-                    "responseMessage": "Invalid Data Found",
-                    "responseCode": 400,
-                })
+                return {
+                    "responseMessage": "No File Found",
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+                }
+
             file = request.files['file']
 
-            # Check if a file is selected
             if file.filename == '':
-                return jsonify({
-                    'responseMessage': 'No selected file',
-                    'responseCode': 400
-                })
+                return {
+                    "responseMessage": "No selected file",
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+                }
 
-            # Check if the file has an allowed extension
-            if not allowed_file(file.filename):
-                return jsonify({
-                    'responseMessage': 'Invalid file extension',
-                    'responseCode': 400
-                })
+            # Generate a unique filename using timestamp and/or uuid
+            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            unique_id = str(uuid.uuid4())
+            original_filename, file_extension = os.path.splitext(file.filename)
+            unique_filename = f"{original_filename}_{timestamp}_{unique_id}{file_extension}"
 
-            # Save the file to the upload folder
-            filename = secure_filename(file.filename)
+            blob_client = container_client.get_blob_client(unique_filename)
+            blob_client.upload_blob(file)
 
-            folder_name_to_check = 'uploads'
-            folder_path = get_folder_path(folder_name_to_check)
-            current_path = os.getcwd()
-
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-
-            random_string = os.path.join(current_path, file_path)
-            # Additional logic for database insertion can go here
-            # Save information to the database
-            query = "INSERT INTO SampleTable(picture) VALUES(?)"
-            cursor.execute(query, (random_string,))
-            connection.commit()
-
-            # For simplicity, let's just return the file path
             return jsonify({
-                'responseMessage': 'File uploaded successfully',
-                'file_path': file_path,
-                'folder_path': folder_path,
-                'current_path': current_path,
-                'responseCode': 200
-            })
+                'filename': unique_filename,
+                'responseCode': http_status_codes.HTTP_200_OK,
+                'responseMessage': 'File uploaded successfully'})
         except Exception as err:
             return {
                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong!!",
-                "error": str(err)
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
             }
 
 

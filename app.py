@@ -97,7 +97,8 @@ account_key = '8jVT4F2jtlc259K+WYq8QoW8LEYEr4R6HqVZImkoUXJCdz7x9E4+5KzIkz2Pb6dTQ
 container_name = 'internaldata'
 
 # Create a BlobServiceClient
-blob_service_client = BlobServiceClient(account_url=f"https://{account_name}.blob.core.windows.net", credential=account_key)
+blob_service_client = BlobServiceClient(account_url=f"https://{account_name}.blob.core.windows.net",
+                                        credential=account_key)
 
 # Create a ContainerClient
 container_client = blob_service_client.get_container_client(container_name)
@@ -1579,53 +1580,64 @@ def request_detail():
 
 # ------------------------------- Expense Initiating API -------------------------------
 
-# API to Upload File
+# API to Upload File:
 def upload_file(file):
     try:
-        # Check if a file is selected
         if file.filename == '':
-            return jsonify({
-                'responseMessage': 'No selected file',
-                'responseCode': 400
-            })
+            return {
+                "responseMessage": "No selected file",
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+            }
 
-        # Check if the file has an allowed extension
-        if not allowed_file(file.filename):
-            return jsonify({
-                'responseMessage': 'Invalid file extension',
-                'responseCode': 400
-            })
+        # Generate a unique filename using timestamp and/or uuid
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_id = str(uuid.uuid4())
+        original_filename, file_extension = os.path.splitext(file.filename)
+        unique_filename = f"{original_filename}_{timestamp}_{unique_id}{file_extension}"
 
-        # Save the file to the upload folder
-        filename = secure_filename(file.filename)
-
-        folder_name_to_check = 'uploads'
-        folder_path = get_folder_path(folder_name_to_check)
-        current_path = os.getcwd()
-
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-
-        random_string = os.path.join(current_path, file_path)
-        # Additional logic for database insertion can go here
-        # Save information to the database
-        query = "INSERT INTO SampleTable(picture) VALUES(?)"
-        cursor.execute(query, (random_string,))
-        connection.commit()
-
-        # For simplicity, let's just return the file path
+        blob_client = container_client.get_blob_client(unique_filename)
+        blob_client.upload_blob(file)
         return {
-            'responseMessage': 'File uploaded successfully',
-            'file_path': file_path,
-            'folder_path': folder_path,
-            'current_path': current_path,
+            'original_name': original_filename,
+            'filename': unique_filename,
+            'responseCode': http_status_codes.HTTP_200_OK,
+            'responseMessage': 'File uploaded successfully'
         }
-
     except Exception as err:
         return {
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "responseMessage": "Something Went Wrong!!",
             "error": str(err)
+        }
+
+
+# API for Preview File:
+def preview_file(file_name):
+    try:
+        # Assume file_name is the blob name in the container
+        blob_client = container_client.get_blob_client(file_name)
+        blob_data = blob_client.download_blob().readall()
+
+        # Determine the content type based on the file extension
+        file_extension = os.path.splitext(file_name)[1].lower()
+
+        if file_extension == '.pdf':
+            content_type = 'application/pdf'
+        elif file_extension in ['.png', '.jpg', '.jpeg']:
+            content_type = 'image/jpeg'
+        else:
+            # Add additional cases for other file types as needed
+            return {
+                "responseMessage": "Unsupported file type",
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+            }
+        # Return the file content as a response with the appropriate content type
+        return Response(blob_data, content_type=content_type)
+    except Exception as err:
+        return {
+            'error': str(err),
+            'responseMessage': 'File not found',
+            'responseCode': http_status_codes.HTTP_404_NOT_FOUND
         }
 
 
@@ -1788,7 +1800,35 @@ def expense_hotel():
 
     if request.method == "GET":
         try:
-            pass
+            request_id = request.headers.get('requestId')
+            query = "Select * from expensehotel where request_id=?"
+            cursor.execute(query, (request_id,))
+            hotel_data_list = cursor.fetchall()
+
+            response_list = []
+            for hotel_data in hotel_data_list:
+                response_dict = {
+                    "city_name": hotel_data.city_name,
+                    "start_date": hotel_data.start_date,
+                    "end_date": hotel_data.end_date,
+                    "estimated_cost": hotel_data.estimated_cost,
+                    "bill_date": hotel_data.bill_date,
+                    "bill_number": hotel_data.bill_number,
+                    "bill_amount": hotel_data.bill_amount,
+                    "bill_currency": hotel_data.bill_currency,
+                    "expense_type": hotel_data.expense_type,
+                    "establishment_name": hotel_data.establishment_name,
+                    "final_amount": hotel_data.final_amount,
+                    "bill_file": hotel_data.bill_file,
+                    "bill_file_original_name": hotel_data.bill_file_original_name
+                }
+                response_list.append(response_dict)
+
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Data Fetched Successfully",
+                "data": response_list
+            }
         except Exception as err:
             return {
                 "reason": str(err),
@@ -1848,16 +1888,17 @@ def expense_hotel():
                 final_amount = obj.get('finalAmount')
                 file = obj.get('file')
 
-                file_data = upload_file(file)
+                file_data = upload_file(file)  # Uploading File Here
 
-                if "file_path" not in file_data:
+                if "responseCode" in file_data and file_data["responseCode"] == 500:
                     return file_data
 
-                file_path = file_data["file_path"]
+                file_name = file_data["filename"]
+                original_file_name = file_data["original_name"]
 
                 # Execute the query
-                query = "INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, request_id) VALUES (?,?,?,?,?,?,?,?,?)"
-                cursor.execute(query, (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_path, request_id))
+                query = "INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?)"
+                cursor.execute(query, (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_name, original_file_name, request_id))
                 connection.commit()
 
             return jsonify({
@@ -2978,8 +3019,8 @@ def get_org():
         qry = f"SELECT * FROM organization"
         organization_data = cursor.execute(qry).fetchall()
         task_list = [{'Company Name': org.company_name, 'Company Onboard Date': org.company_onboard_date,
-                      "Company ID": org.company_id, "Company Contact Name": org.company_contact_name} for org in
-                     organization_data]
+                      "Company ID": org.company_id, "Company Contact Name": org.company_contact_name}
+                     for org in organization_data]
         return jsonify(task_list)
     except Exception as err:
         return jsonify({
@@ -3307,7 +3348,6 @@ def sample_api_test():
                     "responseMessage": "Unsupported file type",
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
                 }
-
             # Return the file content as a response with the appropriate content type
             return Response(blob_data, content_type=content_type)
         except Exception as err:

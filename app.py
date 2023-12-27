@@ -3282,13 +3282,11 @@ def sample_api_test():
             print("Current_path")
             full_path = current_path + file_path
             print("Full Path: ", full_path)
-            base_folder = os.getcwd()
-            print("Base Folder: ", base_folder)
             data = request.get_json()
             print("Data: ", data)
             req_file_path = data.get("filePath")
             print("Request File Path: ", req_file_path)
-            file_path = base_folder + '\\' + req_file_path
+            file_path = current_path + '/' + req_file_path
             print(file_path)
 
             if not os.path.exists(file_path):

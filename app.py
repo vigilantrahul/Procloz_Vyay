@@ -1612,8 +1612,17 @@ def upload_file(file):
 
 
 # API for Preview File:
-def preview_file(file_name):
+@app.route('/preview-file', methods=['GET'])
+# @jwt_required()
+def preview_file():
     try:
+        file_name = request.headers.get('fileName')
+        if not file_name:
+            return {
+                "responseMessage": "fileName is Missing",
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+            }
+
         # Assume file_name is the blob name in the container
         blob_client = container_client.get_blob_client(file_name)
         blob_data = blob_client.download_blob().readall()

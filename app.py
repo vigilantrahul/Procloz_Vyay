@@ -3273,24 +3273,19 @@ def sample_api_test():
     print("Function Called")
     if request.method == 'GET':
         try:
-            print("Here i am ")
             data = request.get_json()
-            print("Data: ", data)
-            file_path = data.get('filePath')
-            print("File Path: ", file_path)
             current_path = os.getcwd()
-            print("Current_path")
-            full_path = current_path + file_path
-            print("Full Path: ", full_path)
-            data = request.get_json()
-            print("Data: ", data)
             req_file_path = data.get("filePath")
-            print("Request File Path: ", req_file_path)
             file_path = current_path + '/' + req_file_path
-            print(file_path)
+            file_list = []
+            test_directory = current_path+"/uploads"
+            if os.path.exists(test_directory) and os.path.isdir(test_directory):
+                # List all files in the directory
+                file_list = os.listdir(test_directory)
 
             if not os.path.exists(file_path):
                 return {
+                    'file_list': file_list,
                     'file_path': file_path,
                     'responseMessage': 'File not found',
                     'responseCode': http_status_codes.HTTP_404_NOT_FOUND
@@ -3317,7 +3312,6 @@ def sample_api_test():
 
             return {
                 "filePath": file_path,
-                "fullPath": full_path,
                 "current_path": current_path,
                 "responseCode": http_status_codes.HTTP_200_OK
             }

@@ -3270,7 +3270,6 @@ def get_folder_path(folder_name):
 @app.route('/sample-api-test', methods=['GET', 'POST'])
 # @jwt_required()
 def sample_api_test():
-    print("Function Called")
     if request.method == 'GET':
         try:
             data = request.get_json()
@@ -3279,8 +3278,8 @@ def sample_api_test():
             file_path = current_path + '/' + req_file_path
             file_list = []
             test_directory = current_path
+
             if os.path.exists(test_directory) and os.path.isdir(test_directory):
-                # List all files in the directory
                 file_list = os.listdir(test_directory)
 
             if not os.path.exists(file_path):
@@ -3308,13 +3307,13 @@ def sample_api_test():
                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
                 }
             # Return the file content as a response with the appropriate content type
-            # return Response(file_content, content_type=content_type)
+            return Response(file_content, content_type=content_type)
 
-            return {
-                "filePath": file_path,
-                "current_path": current_path,
-                "responseCode": http_status_codes.HTTP_200_OK
-            }
+            # return {
+            #     "filePath": file_path,
+            #     "current_path": current_path,
+            #     "responseCode": http_status_codes.HTTP_200_OK
+            # }
         except Exception as err:
             return {
                 'error': str(err),

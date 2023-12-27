@@ -1650,6 +1650,29 @@ def preview_file():
         }
 
 
+# Function to get the proper Object Format:
+def object_format(request):
+
+    # Initialize a list to store the objects
+    objects = []
+
+    for key in set(request.form.keys()) | set(request.files.keys()):
+        match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
+        if match:
+            index, field = map(match.group, [1, 2])
+            index = int(index)
+
+            # Create dictionaries for each index if not present
+            while len(objects) <= index:
+                objects.append({})
+
+            # Assign values to the corresponding field in the dictionary
+            value = request.form.get(key) if key in request.form else request.files.get(key)
+            objects[index][field] = value
+
+    return objects
+
+
 # 1. Expense Request Common Data Insertion:
 @app.route('/expense-request', methods=['POST'])
 @jwt_required()
@@ -1849,22 +1872,24 @@ def expense_hotel():
         try:
             request_id = request.form.get('requestId')
 
-            # Initialize a list to store the objects
-            objects = []
+            # # Initialize a list to store the objects
+            # objects = []
+            #
+            # for key in set(request.form.keys()) | set(request.files.keys()):
+            #     match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
+            #     if match:
+            #         index, field = map(match.group, [1, 2])
+            #         index = int(index)
+            #
+            #         # Create dictionaries for each index if not present
+            #         while len(objects) <= index:
+            #             objects.append({})
+            #
+            #         # Assign values to the corresponding field in the dictionary
+            #         value = request.form.get(key) if key in request.form else request.files.get(key)
+            #         objects[index][field] = value
 
-            for key in set(request.form.keys()) | set(request.files.keys()):
-                match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
-                if match:
-                    index, field = map(match.group, [1, 2])
-                    index = int(index)
-
-                    # Create dictionaries for each index if not present
-                    while len(objects) <= index:
-                        objects.append({})
-
-                    # Assign values to the corresponding field in the dictionary
-                    value = request.form.get(key) if key in request.form else request.files.get(key)
-                    objects[index][field] = value
+            objects = object_format(request)
 
             # Validating the Request ID in the Travel Request Table:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"

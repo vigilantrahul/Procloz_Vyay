@@ -3291,6 +3291,7 @@ def sample_api_test():
 
             if not os.path.exists(file_path):
                 return {
+                    'file_path': file_path,
                     'responseMessage': 'File not found',
                     'responseCode': http_status_codes.HTTP_404_NOT_FOUND
                 }

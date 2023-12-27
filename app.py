@@ -3278,7 +3278,7 @@ def sample_api_test():
             req_file_path = data.get("filePath")
             file_path = current_path + '/' + req_file_path
             file_list = []
-            test_directory = current_path+"/uploads"
+            test_directory = current_path
             if os.path.exists(test_directory) and os.path.isdir(test_directory):
                 # List all files in the directory
                 file_list = os.listdir(test_directory)

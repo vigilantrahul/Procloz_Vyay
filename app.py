@@ -1,6 +1,7 @@
 import os
 import re
 import base64
+from io import BytesIO
 import random
 import sys
 import time
@@ -1624,30 +1625,29 @@ def preview_file():
 
         # Assume file_name is the blob name in the container
         blob_client = container_client.get_blob_client(file_name)
-        # blob_data = blob_client.download_blob().readall()
+        blob_data = blob_client.download_blob().readall()
 
-        # Base64 encode the file content
-        encoded_data = base64.b64encode(blob_client).decode('utf-8')
+        # Determine the content type based on the file extension
+        file_extension = os.path.splitext(file_name)[1].lower()
 
-        # # Determine the content type based on the file extension
-        # file_extension = os.path.splitext(file_name)[1].lower()
-        #
-        # if file_extension == '.pdf':
-        #     content_type = 'application/pdf'
-        # elif file_extension in ['.png', '.jpg', '.jpeg']:
-        #     content_type = 'image/jpeg'
-        # else:
-        #     # Add additional cases for other file types as needed
-        #     return {
-        #         "responseMessage": "Unsupported file type",
-        #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
-        #     }
-        # Return the file content as a response with the appropriate content type
-        return {
-            "file": encoded_data,
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "File Fetched Successfully"
-        }
+        if file_extension == '.pdf':
+            content_type = 'application/pdf'
+        elif file_extension in ['.png', '.jpg', '.jpeg']:
+            content_type = 'image/jpeg'
+        else:
+            # Add additional cases for other file types as needed
+            return {
+                "responseMessage": "Unsupported file type",
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+            }
+
+        # # Return the file content as a response with the appropriate content type
+        return Response(blob_data, content_type=content_type)
+        # return {
+        #     "file": str(blob_data),
+        #     "responseCode": http_status_codes.HTTP_200_OK,
+        #     "responseMessage": "File Fetched Successfully"
+        # }
     except Exception as err:
         return {
             'error': str(err),

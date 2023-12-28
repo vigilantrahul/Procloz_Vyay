@@ -1,13 +1,12 @@
 import os
 import re
-from werkzeug.utils import secure_filename
+import base64
 import random
 import sys
 import time
 from datetime import timedelta, datetime, date
 import datetime
 import uuid
-from io import BytesIO
 from azure.storage.blob import BlobServiceClient, ContainerClient
 import pyodbc
 from flask_mail import Mail, Message
@@ -1627,21 +1626,28 @@ def preview_file():
         blob_client = container_client.get_blob_client(file_name)
         blob_data = blob_client.download_blob().readall()
 
-        # Determine the content type based on the file extension
-        file_extension = os.path.splitext(file_name)[1].lower()
+        # Base64 encode the file content
+        encoded_data = base64.b64encode(blob_data).decode('utf-8')
 
-        if file_extension == '.pdf':
-            content_type = 'application/pdf'
-        elif file_extension in ['.png', '.jpg', '.jpeg']:
-            content_type = 'image/jpeg'
-        else:
-            # Add additional cases for other file types as needed
-            return {
-                "responseMessage": "Unsupported file type",
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
-            }
+        # # Determine the content type based on the file extension
+        # file_extension = os.path.splitext(file_name)[1].lower()
+        #
+        # if file_extension == '.pdf':
+        #     content_type = 'application/pdf'
+        # elif file_extension in ['.png', '.jpg', '.jpeg']:
+        #     content_type = 'image/jpeg'
+        # else:
+        #     # Add additional cases for other file types as needed
+        #     return {
+        #         "responseMessage": "Unsupported file type",
+        #         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+        #     }
         # Return the file content as a response with the appropriate content type
-        return Response(blob_data, content_type=content_type)
+        return {
+            "file": encoded_data,
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "File Fetched Successfully"
+        }
     except Exception as err:
         return {
             'error': str(err),
@@ -1871,24 +1877,6 @@ def expense_hotel():
     if request.method == "POST":
         try:
             request_id = request.form.get('requestId')
-
-            # # Initialize a list to store the objects
-            # objects = []
-            #
-            # for key in set(request.form.keys()) | set(request.files.keys()):
-            #     match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
-            #     if match:
-            #         index, field = map(match.group, [1, 2])
-            #         index = int(index)
-            #
-            #         # Create dictionaries for each index if not present
-            #         while len(objects) <= index:
-            #             objects.append({})
-            #
-            #         # Assign values to the corresponding field in the dictionary
-            #         value = request.form.get(key) if key in request.form else request.files.get(key)
-            #         objects[index][field] = value
-
             objects = object_format(request)
 
             # Validating the Request ID in the Travel Request Table:

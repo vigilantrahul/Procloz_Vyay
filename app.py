@@ -1623,31 +1623,12 @@ def preview_file():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
             }
 
-        # Assume file_name is the blob name in the container
-        blob_client = container_client.get_blob_client(file_name)
-        blob_data = blob_client.download_blob().readall()
-
-        # Determine the content type based on the file extension
-        file_extension = os.path.splitext(file_name)[1].lower()
-
-        if file_extension == '.pdf':
-            content_type = 'application/pdf'
-        elif file_extension in ['.png', '.jpg', '.jpeg']:
-            content_type = 'image/jpeg'
-        else:
-            # Add additional cases for other file types as needed
-            return {
-                "responseMessage": "Unsupported file type",
-                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
-            }
-
-        # # Return the file content as a response with the appropriate content type
-        return Response(blob_data, content_type=content_type)
-        # return {
-        #     "file": str(blob_data),
-        #     "responseCode": http_status_codes.HTTP_200_OK,
-        #     "responseMessage": "File Fetched Successfully"
-        # }
+        url = "https://proclozstorage.blob.core.windows.net/internaldata/"+file_name
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "File Preview Successfully",
+            "fileUrl": url
+        }
     except Exception as err:
         return {
             'error': str(err),

@@ -1624,10 +1624,10 @@ def preview_file():
 
         # Assume file_name is the blob name in the container
         blob_client = container_client.get_blob_client(file_name)
-        blob_data = blob_client.download_blob().readall()
+        # blob_data = blob_client.download_blob().readall()
 
         # Base64 encode the file content
-        encoded_data = base64.b64encode(blob_data).decode('utf-8')
+        encoded_data = base64.b64encode(blob_client).decode('utf-8')
 
         # # Determine the content type based on the file extension
         # file_extension = os.path.splitext(file_name)[1].lower()

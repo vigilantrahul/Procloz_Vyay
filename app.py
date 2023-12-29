@@ -1827,19 +1827,19 @@ def expense_hotel():
             response_list = []
             for hotel_data in hotel_data_list:
                 response_dict = {
-                    "city_name": hotel_data.city_name,
-                    "start_date": hotel_data.start_date,
-                    "end_date": hotel_data.end_date,
-                    "estimated_cost": hotel_data.estimated_cost,
-                    "bill_date": hotel_data.bill_date,
-                    "bill_number": hotel_data.bill_number,
-                    "bill_amount": hotel_data.bill_amount,
-                    "bill_currency": hotel_data.bill_currency,
-                    "expense_type": hotel_data.expense_type,
-                    "establishment_name": hotel_data.establishment_name,
-                    "final_amount": hotel_data.final_amount,
-                    "bill_file": hotel_data.bill_file,
-                    "bill_file_original_name": hotel_data.bill_file_original_name
+                    "cityName": hotel_data.city_name,
+                    "startDate": hotel_data.start_date,
+                    "endDate": hotel_data.end_date,
+                    "estimatedCost": hotel_data.estimated_cost,
+                    "billDate": hotel_data.bill_date,
+                    "billNumber": hotel_data.bill_number,
+                    "billAmount": hotel_data.bill_amount,
+                    "billCurrency": hotel_data.bill_currency,
+                    "expenseType": hotel_data.expense_type,
+                    "establishmentName": hotel_data.establishment_name,
+                    "finalAmount": hotel_data.final_amount,
+                    "billFile": hotel_data.bill_file,
+                    "billFileOriginalName": hotel_data.bill_file_original_name
                 }
                 response_list.append(response_dict)
 

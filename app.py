@@ -2976,34 +2976,41 @@ def travel_request_list():
 # Total Requests List for Pull Request
 @app.route('/pull-request-list', methods=['GET'])
 def pull_request_list():
-    employee_id = request.headers.get('employeeId')
-    data_list = pull_request(cursor, employee_id)
+    try:
+        employee_id = request.headers.get('employeeId')
+        data_list = pull_request(cursor, employee_id)
 
-    approved_req = []
-    for req in data_list:
-        # Code to get the PerDiem and Other Expense Amount:
-        request_id = req[1]
-        request_policy = req[4]
-        other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-        data_dict = {
-            'request_id': request_id,
-            'request_name': req[2],
-            'start_date': req[3],
-            'request_policy': request_policy,
-            'employee_name': req[5],
-            'status': req[7],
-            'total_amount': (req[15] + other_expense_total)
+        approved_req = []
+        for req in data_list:
+            # Code to get the PerDiem and Other Expense Amount:
+            request_id = req[1]
+            request_policy = req[4]
+            other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            data_dict = {
+                'request_id': request_id,
+                'request_name': req[2],
+                'start_date': req[3],
+                'request_policy': request_policy,
+                'employee_name': req[5],
+                'status': req[7],
+                'total_amount': (req[15] + other_expense_total)
+            }
+            if req[0] == 'Approved Request':
+                approved_req.append(data_dict)
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": {
+                "approvedRequest": approved_req
+            },
+            "responseMessage": "Data Fetched Successfully"
         }
-        if req[0] == 'Approved Request':
-            approved_req.append(data_dict)
-
-    return {
-        "responseCode": http_status_codes.HTTP_200_OK,
-        "data": {
-            "approvedRequest": approved_req
-        },
-        "responseMessage": "Data Fetched Successfully"
-    }
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong !!"
+        }
 
 
 # ------------------------------- Data Fetch API -------------------------------
@@ -3324,6 +3331,28 @@ def get_folder_path(folder_name):
         return folder_path
     else:
         return None
+
+
+@app.route('/exchange-rate', methods=['GET'])
+# @jwt_required()
+def exchange_rate():
+    try:
+        base_currency = request.headers.get('baseCurrency')
+        to_currency = request.headers.get('toCurrency')
+
+        query = f"select {to_currency} from country where currency_code=?"
+        currency_value = cursor.execute(query, (base_currency, )).fetchone()
+        return {
+            "exchangeRate": currency_value[0],
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Exchange Rate Fetched Successfully"
+        }
+    except Exception as err:
+        return{
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
+        }
 
 
 @app.route('/sample-api-test', methods=['GET', 'POST'])

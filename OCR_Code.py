@@ -1,13 +1,6 @@
-# import pytesseract
-import os
-import glob
 import easyocr
 import re
-from dateutil import parser
 from datetime import datetime
-
-# import torch
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Finding establishment name

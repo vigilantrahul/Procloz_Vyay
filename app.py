@@ -1890,15 +1890,17 @@ def expense_hotel():
                 expense_type = obj.get('expenseType')
                 establishment_name = obj.get('establishmentName')
                 final_amount = obj.get('finalAmount')
-                file = obj.get('file')
+                file_name = obj.get('billFile', None)
+                original_file_name = obj.get('billFileOriginal', None)
 
-                file_data = upload_file(file)  # Uploading File Here
+                if file_name is None and original_file_name is None:
+                    file = obj.get('file')
+                    file_data = upload_file(file)  # Uploading File Here
+                    if "responseCode" in file_data and file_data["responseCode"] == 500:
+                        return file_data
 
-                if "responseCode" in file_data and file_data["responseCode"] == 500:
-                    return file_data
-
-                file_name = file_data["filename"]
-                original_file_name = file_data["original_name"]
+                    file_name = file_data["filename"]
+                    original_file_name = file_data["original_name"]
 
                 # Execute the query
                 query = "INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?)"

@@ -3333,12 +3333,35 @@ def get_folder_path(folder_name):
         return None
 
 
+@app.route('/get-currency', methods=['GET'])
+# @jwt_required()
+def get_currency():
+    try:
+        query = "Select currency_code from country"
+        currency_data = cursor.execute(query).fetchall()
+        print('currency_data: ', currency_data)
+        currency = []
+        for data in currency_data:
+            currency.append(data[0])
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": currency,
+            "responseMessage": "Currency Fetched Successfully"
+        }
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong !!"
+        }
+
+
 @app.route('/exchange-rate', methods=['GET'])
 # @jwt_required()
 def exchange_rate():
     try:
-        base_currency = request.headers.get('baseCurrency')
-        to_currency = request.headers.get('toCurrency')
+        base_currency = request.headers.get('billCurrency')
+        to_currency = request.headers.get('baseCurrency')
 
         query = f"select {to_currency} from country where currency_code=?"
         currency_value = cursor.execute(query, (base_currency, )).fetchone()

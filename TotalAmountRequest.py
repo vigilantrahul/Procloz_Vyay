@@ -52,9 +52,9 @@ def total_perdiem_or_expense_amount(cursor, request_id, request_policy):
     days_difference = (end_date - start_date).days
 
     # Query to fetch the Rate from the Country Table:
-    country_query = "SELECT exchange_rate FROM country WHERE currency_code=?"
-    exchange_rate = cursor.execute(country_query, (currency_code,)).fetchone()
-    exchange_rate = exchange_rate[0]
+    # country_query = "SELECT exchange_rate FROM country WHERE currency_code=?"
+    # exchange_rate = cursor.execute(country_query, (currency_code,)).fetchone()
+    # exchange_rate = exchange_rate[0]
 
     # Fetching Per Diem Data:
     query = "SELECT * from perdiem WHERE request_id=?"
@@ -86,13 +86,13 @@ def total_perdiem_or_expense_amount(cursor, request_id, request_policy):
         elif diem['dinner'] == 1:
             dinner_count += 1
 
-    total = ((data[8] * breakfast_count * exchange_rate) +
-             (data[9] * lunch_count * exchange_rate) +
-             (data[9] * dinner_count * exchange_rate) +
-             (data[10] * international_roaming * exchange_rate)
+    total = ((data[8] * breakfast_count * 83.15) +
+             (data[9] * lunch_count * 83.15) +
+             (data[9] * dinner_count * 83.15) +
+             (data[10] * international_roaming * 83.15)
              )
 
     if days_difference >= incident_expense_valid_days:
-        incident_expense_amount = ((data[11] * days_difference) * exchange_rate)
+        incident_expense_amount = ((data[11] * days_difference) * 83.15)
         total = total+incident_expense_amount
     return total

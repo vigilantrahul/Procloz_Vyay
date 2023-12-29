@@ -500,9 +500,8 @@ def pull_request(cursor, employee_id):
                         where t.transport_type = 'taxi' group by t.request_id) taxicost
                         on taxicost.request_id = t.request_id
             WHERE e.employee_id = @employee_id 
-            and t.status in ('approved')
+            and t.status in ('approved', 'paid')
         """
     cursor.execute(query, (employee_id, ))
     all_approved_request = cursor.fetchall()
     return all_approved_request
-

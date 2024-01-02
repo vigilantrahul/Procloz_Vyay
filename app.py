@@ -1879,7 +1879,6 @@ def expense_update_cost_center():
 @app.route('/expense-transport', methods=['GET', 'POST'])
 # @jwt_required()
 def expense_transport():
-    print("Function Called")
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -1990,15 +1989,10 @@ def expense_transport():
     if request.method == "POST":
         try:
             request_id = request.form.get('requestId', None)
-            print("request_Id: ", request_id)
             employee_id = request.form.get('employeeId', None)
-            print("employee_id: ", employee_id)
             trip_way = request.form.get('tripWay', None)
-            print("trip_way: ", trip_way)
             transport_type = request.args.get('transportType')
-            print("transport_type: ", transport_type)
             objects = object_format(request)
-            print("Objects: ", objects)
 
             # Validating the Request_ID already exist or not:
             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
@@ -2016,24 +2010,21 @@ def expense_transport():
                 return result
 
             if transport_type == "train":
-                print("Got the condition of the Train")
-                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
-                # return result
+                result = expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                return result
 
             if transport_type == "bus":
-                print("Got the condition of the Bus")
-                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
-                # return result
+                result = expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                return result
 
             if transport_type == "taxi":
-                print("Got the condition of the Taxi")
-                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
-                # return result
+                result = expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                return result
 
             if transport_type == "carRental":
                 print("Got the condition of the Car Rental")
-                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
-                # return result
+                result = expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request, container_client, employee_id)
+                return result
 
             return {
                 "reason": "If main nahi gya bhai check kr jaldi",

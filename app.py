@@ -13,6 +13,7 @@ import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session, Response
 from flask_cors import CORS
+from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, expense_carrental_data, clear_expense_perdiem_data, clear_expense_hotel_data, clear_expense_transport_data
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
@@ -777,7 +778,6 @@ def request_transportation():
     if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")  # Request ID for getting data
-            request_type = request.headers.get("requestType")  # Request Type for getting data
             request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
 
             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
@@ -1877,8 +1877,9 @@ def expense_update_cost_center():
 
 # 3. Request Hotel on Travel
 @app.route('/expense-transport', methods=['GET', 'POST'])
-@jwt_required()
+# @jwt_required()
 def expense_transport():
+    # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
             "responseMessage": "Database Connection Error",
@@ -1888,33 +1889,32 @@ def expense_transport():
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
 
-    if request.method == 'GET':
+    if request.method == "GET":
         try:
             request_id = request.headers.get("requestId")  # Request ID for getting data
-            request_type = request.headers.get("requestType")  # Request Type for getting data
             request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
 
             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
             query = """
                 SELECT 
-                    transport.transport_type,
-                    transport.trip_type,
-                    transporttripmapping.trip_from,
-                    transporttripmapping.trip_to,
-                    transporttripmapping.departure_date,
-                    transporttripmapping.estimated_cost,
-                    transporttripmapping.from_date,
-                    transporttripmapping.to_date,
-                    transporttripmapping.comment
-                FROM transport
-                LEFT JOIN transporttripmapping ON transport.id = transporttripmapping.transport
-                WHERE transport.request_id = ?
+                    expensetransport.transport_type,
+                    expensetransport.trip_type,
+                    expensetransporttripmapping.trip_from,
+                    expensetransporttripmapping.trip_to,
+                    expensetransporttripmapping.departure_date,
+                    expensetransporttripmapping.estimated_cost,
+                    expensetransporttripmapping.from_date,
+                    expensetransporttripmapping.to_date,
+                    expensetransporttripmapping.comment
+                FROM expensetransport
+                LEFT JOIN expensetransporttripmapping ON expensetransport.id = expensetransporttripmapping.transport
+                WHERE expensetransport.request_id = ?
             """
-
             cursor.execute(query, (request_id,))
 
             # Fetch results
             results = cursor.fetchall()
+
             transport_data = []
             current_transport = None
 
@@ -1925,7 +1925,6 @@ def expense_transport():
                 # Check if it's a new transport entry
                 if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
                         current_transport['tripType']:
-
                     if current_transport:
                         transport_data.append(current_transport)
                     current_transport = {
@@ -1970,8 +1969,8 @@ def expense_transport():
             # Fetching the Total of the Request:
             amount = total_amount_request(cursor, request_id)
             amount = amount[0]
-
             total_amount = amount + perdiem_other_expense
+
             return jsonify(
                 {
                     "amount": total_amount,
@@ -1980,7 +1979,6 @@ def expense_transport():
                     'responseCode': http_status_codes.HTTP_200_OK
                 }
             )
-
         except Exception as err:
             return jsonify({
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
@@ -1988,15 +1986,65 @@ def expense_transport():
                 "reason": str(err)
             })
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            pass
-        except Exception as err:
+            request_id = request.form.get('requestId', None)
+            print("request_Id: ", request_id)
+            employee_id = request.form.get('employeeId', None)
+            print("employee_id: ", employee_id)
+            trip_way = request.form.get('tripWay', None)
+            print("trip_way: ", trip_way)
+            transport_type = request.args.get('transportType')
+            print("transport_type: ", transport_type)
+            objects = object_format(request)
+            print("Objects: ", objects)
+
+            # Validating the Request_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            if transport_type == "flight":
+                result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                return result
+
+            if transport_type == "train":
+                print("Got the condition of the Train")
+                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                # return result
+
+            if transport_type == "bus":
+                print("Got the condition of the Bus")
+                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                # return result
+
+            if transport_type == "taxi":
+                print("Got the condition of the Taxi")
+                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                # return result
+
+            if transport_type == "carRental":
+                print("Got the condition of the Car Rental")
+                # result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                # return result
+
             return {
-                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-                "responseMessage": "Something Went Wrong",
-                "reason": str(err)
+                "reason": "If main nahi gya bhai check kr jaldi",
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Success here all!!"
             }
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)  # Error Code comes here
+            })
 
 
 # 4. Request Hotel on Travel

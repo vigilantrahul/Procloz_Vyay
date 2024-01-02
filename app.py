@@ -1879,6 +1879,7 @@ def expense_update_cost_center():
 @app.route('/expense-transport', methods=['GET', 'POST'])
 # @jwt_required()
 def expense_transport():
+    print("Function Called")
     # Validation for the Connection on DB/Server
     if not connection:
         custom_error_response = {
@@ -2100,8 +2101,10 @@ def expense_hotel():
             }
 
     if request.method == "POST":
+        print("Function Called !!")
         try:
             request_id = request.form.get('requestId')
+            print("requestId: ", request_id)
             objects = object_format(request)
 
             # Validating the Request ID in the Travel Request Table:

@@ -105,16 +105,7 @@ def expense_flight_data(cursor, connection, request_id, transport_type, trip_way
     })
 
 
-def expense_train_data(cursor, connection, request_id, transports, employee_id):
-    if 'trips' in transports and 'tripWay' in transports:
-        trips = transports['trips']
-        trip_type = transports['tripWay']
-    else:
-        # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
-        trips = None
-        trip_type = None
-    transport_type = transports['transportType']
-
+def expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id):
     query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
@@ -124,30 +115,48 @@ def expense_train_data(cursor, connection, request_id, transports, employee_id):
         query = "DELETE FROM transport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type, ))
 
-    # Inserting the data in the transport table
-    sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
-    cursor.execute(sql_query, (request_id, transport_type, trip_type))
-    connection.commit()
+    # Code for the request Process:
+    for obj in objects:
+        trip_from = obj.get('from')
+        trip_to = obj.get('to')
+        departureDate = obj.get('departureDate')
+        estimate_cost = obj.get('estimateCost')
+        bill_date = obj.get('billDate')
+        bill_number = obj.get('billNumber')
+        bill_currency = obj.get('billCurrency')
+        bill_amount = obj.get('billAmount')
+        exc_rate = obj.get('exchangeRate')
+        final_amount = obj.get('finalAmount')
+        expense_type = obj.get('expenseType')
+        file_name = obj.get('billFile', None)
+        original_file_name = obj.get('billFileOriginal', None)
 
-    # Get the ID of the inserted row
-    transport_id_query = "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
-    cursor.execute(transport_id_query, (request_id, employee_id, ))
-    row_id = cursor.fetchone()
+        # Checking for the File Exists or Not Exists:
+        if file_name is None and original_file_name is None:
+            file = obj.get('file')
+            file_data = upload_file(file, container_client)  # Uploading File Here
+            if "responseCode" in file_data and file_data["responseCode"] == 500:
+                return file_data
 
-    transport_id = row_id[0]
+            file_name = file_data["filename"]
+            original_file_name = file_data["original_name"]
 
-    # Condition for Trips
-    if trips is not None:
-        for trip in trips:
-            trip['transport'] = transport_id
+        # Inserting the data in the transport table
+        sql_query = "INSERT INTO expensetransport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
+        cursor.execute(sql_query, (request_id, transport_type, trip_way))
+        connection.commit()
 
-        # Construct the SQL query for bulk insert
-        values = ', '.join([
-            f"('{trip['from']}', '{trip['to']}', '{trip['departureDate']}', {trip['estimateCost']}, '{trip['transport']}')"
-            for trip in trips
-        ])
-        query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
-        cursor.execute(query)
+        # Get the ID of the inserted row
+        transport_id_query = "select top 1 tprt.id from expensetransport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
+        cursor.execute(transport_id_query, (request_id, employee_id,))
+        row_id = cursor.fetchone()
+
+        transport_id = row_id[0]
+
+        query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        cursor.execute(query, (
+        trip_from, trip_to, departureDate, estimate_cost, bill_date, bill_number, bill_currency, bill_amount,
+        exc_rate, final_amount, expense_type, file_name, original_file_name, transport_id))
         connection.commit()
 
     return ({
@@ -156,17 +165,7 @@ def expense_train_data(cursor, connection, request_id, transports, employee_id):
     })
 
 
-def expense_bus_data(cursor, connection, request_id, transports, employee_id):
-    if 'trips' in transports and 'tripWay' in transports:
-        trips = transports['trips']
-        trip_type = transports['tripWay']
-    else:
-        # Handle the case when 'trips' and 'tripWay' keys are missing or have None values
-        trips = None
-        trip_type = None
-
-    transport_type = transports['transportType']
-
+def expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id):
     query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
@@ -176,30 +175,45 @@ def expense_bus_data(cursor, connection, request_id, transports, employee_id):
         query = "DELETE FROM transport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type, ))
 
-    # Inserting the data in the transport table
-    sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
-    cursor.execute(sql_query, (request_id, transport_type, trip_type))
-    connection.commit()
+    # Code for the request Process:
+    for obj in objects:
+        trip_from = obj.get('from')
+        trip_to = obj.get('to')
+        departureDate = obj.get('departureDate')
+        estimate_cost = obj.get('estimateCost')
+        bill_date = obj.get('billDate')
+        bill_number = obj.get('billNumber')
+        bill_currency = obj.get('billCurrency')
+        bill_amount = obj.get('billAmount')
+        exc_rate = obj.get('exchangeRate')
+        final_amount = obj.get('finalAmount')
+        expense_type = obj.get('expenseType')
+        file_name = obj.get('billFile', None)
+        original_file_name = obj.get('billFileOriginal', None)
 
-    # Get the ID of the inserted row
-    transport_id_query = "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
-    cursor.execute(transport_id_query, (request_id, employee_id, ))
-    row_id = cursor.fetchone()
+        # Checking for the File Exists or Not Exists:
+        if file_name is None and original_file_name is None:
+            file = obj.get('file')
+            file_data = upload_file(file, container_client)  # Uploading File Here
+            if "responseCode" in file_data and file_data["responseCode"] == 500:
+                return file_data
 
-    transport_id = row_id[0]
+            file_name = file_data["filename"]
+            original_file_name = file_data["original_name"]
 
-    # Condition for Trips
-    if trips is not None:
-        for trip in trips:
-            trip['transport'] = transport_id
+        # Inserting the data in the transport table
+        sql_query = "INSERT INTO expensetransport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
+        cursor.execute(sql_query, (request_id, transport_type, trip_way))
+        connection.commit()
 
-        # Construct the SQL query for bulk insert
-        values = ', '.join([
-            f"('{trip['from']}', '{trip['to']}', '{trip['departureDate']}', {trip['estimateCost']}, '{trip['transport']}')"
-            for trip in trips
-        ])
-        query = f"INSERT INTO transporttripmapping (trip_from, trip_to, departure_date, estimated_cost, transport) VALUES {values}"
-        cursor.execute(query)
+        # Get the ID of the inserted row
+        transport_id_query = "select top 1 tprt.id from expensetransport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
+        cursor.execute(transport_id_query, (request_id, employee_id,))
+        row_id = cursor.fetchone()
+        transport_id = row_id[0]
+
+        query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        cursor.execute(query, (trip_from, trip_to, departureDate, estimate_cost, bill_date, bill_number, bill_currency, bill_amount, exc_rate, final_amount, expense_type, file_name, original_file_name, transport_id))
         connection.commit()
 
     return ({

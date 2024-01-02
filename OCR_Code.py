@@ -3,6 +3,14 @@ import re
 from datetime import datetime
 
 
+def parse_date(date_str, date_format="%Y-%m-%d"):
+    try:
+        parsed_date = datetime.strptime(date_str, date_format).date()
+        return parsed_date
+    except ValueError:
+        return None
+
+
 # Finding establishment name
 def fetch_establishment_name(result):
     establishment_key = ['OPERATED', 'BY']
@@ -93,10 +101,11 @@ def get_ocr_data(file):
     bill_date = fetch_bill_date(result)
     bill_amount = fetch_bill_amount(result)
     bill_number = fetch_bill_number(result)
+    date = parse_date(bill_date)
 
     return {
         "billNumber": bill_number,
         "billAmount": bill_amount,
-        "billDate": bill_date,
+        "billDate": date,
         "establishmentName": establishment_name
     }

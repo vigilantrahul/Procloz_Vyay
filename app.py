@@ -14,6 +14,7 @@ from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session, Response
 from flask_cors import CORS
 from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, expense_carrental_data, clear_expense_perdiem_data, clear_expense_hotel_data, clear_expense_transport_data
+from Pull_Request_Data import pull_request_data_api
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
@@ -761,7 +762,7 @@ def update_cost_center():
 
 
 # 3. Request Transportation on Travel
-@app.route('/request-transport', methods=['GET'])
+@app.route('/request-transport', methods=['GET', 'POST'])
 @jwt_required()
 def request_transportation():
     # Validation for the Connection on DB/Server
@@ -1710,12 +1711,11 @@ def preview_file():
 
 
 # Function to get the proper Object Format:
-def object_format(request):
-
+def object_format(req):
     # Initialize a list to store the objects
     objects = []
 
-    for key in set(request.form.keys()) | set(request.files.keys()):
+    for key in set(req.form.keys()) | set(req.files.keys()):
         match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
         if match:
             index, field = map(match.group, [1, 2])
@@ -1726,7 +1726,7 @@ def object_format(request):
                 objects.append({})
 
             # Assign values to the corresponding field in the dictionary
-            value = request.form.get(key) if key in request.form else request.files.get(key)
+            value = req.form.get(key) if key in req.form else req.files.get(key)
             objects[index][field] = value
 
     return objects
@@ -3268,6 +3268,25 @@ def pull_request_list():
 
 
 # ------------------------------- Data Fetch API -------------------------------
+
+# Set Up Pull Request Data
+@app.route('/pull-request-setup', methods=['POST'])
+def pull_request_setup():
+    try:
+        data = request.get_json()
+        request_id = data.get('requestId')
+        employee_id = data.get('employeeId')
+        data = pull_request_data_api(request_id, cursor, connection, employee_id)
+        return data
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
+        }
+
+
+# Get Organization
 @app.route('/get-organization', methods=['GET'])
 def get_org():
     try:
@@ -3593,7 +3612,6 @@ def get_currency():
     try:
         query = "Select currency_code from country"
         currency_data = cursor.execute(query).fetchall()
-        print('currency_data: ', currency_data)
         currency = []
         for data in currency_data:
             currency.append(data[0])

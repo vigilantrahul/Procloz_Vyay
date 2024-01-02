@@ -2129,6 +2129,10 @@ def expense_hotel():
 
             # Now 'objects' is a list of dictionaries
             for obj in objects:
+                start_date = obj.get('startDate')
+                end_date = obj.get('endDate')
+                city_name = obj.get('cityName')
+                estimated_cost = obj.get('estimatedCost')
                 bill_date = obj.get('billDate')
                 bill_number = obj.get('billNumber')
                 bill_currency = obj.get('billCurrency')
@@ -2136,6 +2140,7 @@ def expense_hotel():
                 expense_type = obj.get('expenseType')
                 establishment_name = obj.get('establishmentName')
                 final_amount = obj.get('finalAmount')
+                exc_rate = obj.get('exchangeRate')
                 file_name = obj.get('billFile', None)
                 original_file_name = obj.get('billFileOriginal', None)
 
@@ -2149,8 +2154,8 @@ def expense_hotel():
                     original_file_name = file_data["original_name"]
 
                 # Execute the query
-                query = "INSERT INTO expensehotel (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?)"
-                cursor.execute(query, (bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_name, original_file_name, request_id))
+                query = "INSERT INTO expensehotel (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?)"
+                cursor.execute(query, (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_name, original_file_name, request_id))
                 connection.commit()
 
             return jsonify({

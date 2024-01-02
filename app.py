@@ -984,7 +984,7 @@ def request_hotel():
                         EH.bill_currency
                     FROM hotel H
                     LEFT JOIN expensehotel EH ON H.request_id = EH.request_id
-                    where H.request_id='DRYS021113021683';
+                    where H.request_id=?;
                 """
 
             request_hotel_data = cursor.execute(query, request_id).fetchall()
@@ -2065,7 +2065,7 @@ def expense_hotel():
     if request.method == "GET":
         try:
             request_id = request.headers.get('requestId')
-            query = "Select * from expensehotel where request_id=?"
+            query = " Select * from expensehotel where request_id=?"
             cursor.execute(query, (request_id,))
             hotel_data_list = cursor.fetchall()
 

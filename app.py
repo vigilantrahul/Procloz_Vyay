@@ -2145,8 +2145,8 @@ def expense_hotel():
                     original_file_name = file_data["original_name"]
 
                 # Execute the query
-                query = "INSERT INTO expensehotel (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-                cursor.execute(query, (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, final_amount, file_name, original_file_name, request_id))
+                query = "INSERT INTO expensehotel (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exchange_rate, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                cursor.execute(query, (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exc_rate, final_amount, file_name, original_file_name, request_id))
                 connection.commit()
 
             return jsonify({

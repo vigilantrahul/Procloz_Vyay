@@ -235,7 +235,8 @@ def expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, 
         trip_from = obj.get('from')
         trip_to = obj.get('to')
         departureDate = obj.get('departureDate')
-        estimate_cost = obj.get('estimateCost')
+        estimate_cost = obj.get('estimatedCost')
+        establishment_name = obj.get('establishmentName')
         bill_date = obj.get('billDate')
         bill_number = obj.get('billNumber')
         bill_currency = obj.get('billCurrency')
@@ -268,28 +269,17 @@ def expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, 
 
         transport_id = row_id[0]
 
-        query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        cursor.execute(query, (
-        trip_from, trip_to, departureDate, estimate_cost, bill_date, bill_number, bill_currency, bill_amount, exc_rate,
-        final_amount, expense_type, file_name, original_file_name, transport_id))
+        query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        cursor.execute(query, (trip_from, trip_to, departureDate, estimate_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exc_rate, final_amount, expense_type, file_name, original_file_name, transport_id))
         connection.commit()
 
     return ({
         "responseCode": http_status_codes.HTTP_200_OK,
-        "responseMessage": "Train Data Saved Successfully"
+        "responseMessage": "Taxi Data Saved Successfully"
     })
 
 
-def expense_carrental_data(cursor, connection, data):
-    trip_type = None
-    request_id = data["requestId"]
-    transport_type = data["transportType"]
-    employee_id = data["employeeId"]
-    comment = data["comment"]
-    from_date = data["startDate"]
-    to_date = data["endDate"]
-    estimate_cost = data["estimateCost"]
-
+def expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request, container_client, employee_id):
     query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
@@ -297,22 +287,47 @@ def expense_carrental_data(cursor, connection, data):
     # Condition is that request_id data available in the transport table
     if result:
         query = "DELETE FROM transport where request_id=? and transport_type=?"
-        cursor.execute(query, (request_id, transport_type, ))
+        cursor.execute(query, (request_id, transport_type,))
+
+    # Code for the request Process:
+    from_date = request.form.get('startDate', None)
+    to_date = request.form.get('endDate', None)
+    estimate_cost = request.form.get('estimatedCost', None)
+    establishment_name = request.form.get('establishmentName', None)
+    bill_date = request.form.get('billDate', None)
+    bill_number = request.form.get('billNumber', None)
+    bill_currency = request.form.get('billCurrency', None)
+    bill_amount = request.form.get('billAmount', None)
+    expense_type = request.form.get('expenseType', None)
+    exc_rate = request.form.get('exchangeRate', None)
+    final_amount = request.form.get('finalAmount', None)
+    file_name = request.form.get('billFile', None)
+    original_file_name = request.form.get('billFileOriginal', None)
+
+    # Checking for the File Exists or Not Exists:
+    if file_name is None and original_file_name is None:
+        file = request.files.get('file')
+        file_data = upload_file(file, container_client)  # Uploading File Here
+        if "responseCode" in file_data and file_data["responseCode"] == 500:
+            return file_data
+
+        file_name = file_data["filename"]
+        original_file_name = file_data["original_name"]
 
     # Inserting the data in the transport table
-    sql_query = "INSERT INTO transport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
-    cursor.execute(sql_query, (request_id, transport_type, trip_type))
+    sql_query = "INSERT INTO expensetransport (request_id, transport_type, trip_type) VALUES (?, ?, ?)"
+    cursor.execute(sql_query, (request_id, transport_type, trip_way))
     connection.commit()
 
     # Get the ID of the inserted row
-    transport_id_query = "select top 1 tprt.id from transport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
-    cursor.execute(transport_id_query, (request_id, employee_id, ))
+    transport_id_query = "select top 1 tprt.id from expensetransport as tprt INNER join travelrequest as trqst on tprt.request_id=trqst.request_id where tprt.request_id=? and trqst.user_id=? order by tprt.id DESC"
+    cursor.execute(transport_id_query, (request_id, employee_id,))
     row_id = cursor.fetchone()
 
     transport_id = row_id[0]
 
-    query = f"INSERT INTO transporttripmapping (comment, estimated_cost, from_date, to_date, transport) VALUES (?, ?, ?, ?, ?)"
-    cursor.execute(query, (comment, estimate_cost, from_date, to_date, transport_id))
+    query = f"INSERT INTO expensetransporttripmapping (from_date, to_date, estimated_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+    cursor.execute(query, (from_date, to_date, estimate_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exc_rate, final_amount, expense_type, file_name, original_file_name, transport_id))
     connection.commit()
 
     return ({

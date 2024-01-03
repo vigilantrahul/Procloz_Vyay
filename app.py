@@ -2067,6 +2067,7 @@ def expense_hotel():
                     "startDate": hotel_data.start_date,
                     "endDate": hotel_data.end_date,
                     "estimatedCost": hotel_data.estimated_cost,
+                    "exchangeRate": hotel_data.exchange_rate,
                     "billDate": hotel_data.bill_date,
                     "billNumber": hotel_data.bill_number,
                     "billAmount": hotel_data.bill_amount,

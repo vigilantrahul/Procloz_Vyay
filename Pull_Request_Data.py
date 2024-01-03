@@ -23,9 +23,7 @@ def pull_request_data_api(request_id, cursor, connection, employee_id):
             Insert into expenserequest (request_id, user_id, request_name, request_policy, start_date, end_date, purpose, status, cost_center, cash_in_advance, reason_cash_in_advance, incident_expense, international_roaming)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """
-        cursor.execute(expense_header_query, (
-        request_id, user_id, request_name, request_policy, start_date, end_date, purpose, status, cost_center,
-        cash_in_advance, reason_cash_in_advance, incident_expense, international_roaming))
+        cursor.execute(expense_header_query, (request_id, user_id, request_name, request_policy, start_date, end_date, purpose, status, cost_center, cash_in_advance, reason_cash_in_advance, incident_expense, international_roaming))
         connection.commit()
 
         # Select API from PerDiem:
@@ -33,20 +31,22 @@ def pull_request_data_api(request_id, cursor, connection, employee_id):
         perdiem_data = cursor.execute(perdiem_query, (request_id,)).fetchall()
         perdiem_data = [t[1:] for t in perdiem_data]
 
-        # Insert API for Expense PerDiem:
-        expense_perdiem_query = "Insert into expenseperdiem (request_id, breakfast, lunch, dinner, diem_date) VALUES (?,?,?,?,?)"
-        cursor.executemany(expense_perdiem_query, perdiem_data)
-        connection.commit()
+        if len(perdiem_data) != 0:
+            # Insert API for Expense PerDiem:
+            expense_perdiem_query = "Insert into expenseperdiem (request_id, breakfast, lunch, dinner, diem_date) VALUES (?,?,?,?,?)"
+            cursor.executemany(expense_perdiem_query, perdiem_data)
+            connection.commit()
 
         # Select API from Hotel:
         hotel_query = "SELECT * from hotel WHERE request_id=?"
         hotel_data = cursor.execute(hotel_query, (request_id,)).fetchall()
         hotel_data = [t[1:] for t in hotel_data]
 
-        # Insert API for Expense Hotel:
-        expense_perdiem_query = "Insert into expensehotel (request_id, city_name, start_date, end_date, estimated_cost) VALUES (?,?,?,?,?)"
-        cursor.executemany(expense_perdiem_query, hotel_data)
-        connection.commit()
+        if len(hotel_data) != 0:
+            # Insert API for Expense Hotel:
+            expense_perdiem_query = "Insert into expensehotel (request_id, city_name, start_date, end_date, estimated_cost) VALUES (?,?,?,?,?)"
+            cursor.executemany(expense_perdiem_query, hotel_data)
+            connection.commit()
 
         # Select API from Transport:
         transport_query = "Select * from transport Where request_id=?"

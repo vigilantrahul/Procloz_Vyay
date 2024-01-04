@@ -148,7 +148,6 @@ def login():
 
         # Execute the SQL query to check user credentials
         qry = f"SELECT * FROM userproc05092023_1 WHERE email_id=? AND password=?"
-        # cursor.execute(qry, (email, pwd))
         user_data = cursor.execute(qry, (email, pwd)).fetchone()
 
         if user_data is None:

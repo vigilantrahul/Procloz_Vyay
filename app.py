@@ -3332,6 +3332,514 @@ def request_send_back():
         })
 
 
+# ------------------------------- Expense Status Update -------------------------------
+@app.route('/expenserequest-submit', methods=['POST'])
+@jwt_required()
+def expense_request_submit():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # validation for status:
+        if status != 'submitted':
+            return {
+                'responseCode': http_status_codes.HTTP_400_BAD_REQUEST,
+                'responseMessage': 'Invalid Status Found'
+            }
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT TOP 1 user_id FROM expenserequest WHERE request_id = ?"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request ID Not Exists!!"
+            }
+        user_id = result[0]
+
+        query = f"UPDATE expenserequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        # get the Manager's Email of the user_id
+        email_query = """
+            SELECT
+                m.email_id AS manager_email,
+                m.employee_id
+            FROM
+                userproc05092023_1 e
+            JOIN
+                userproc05092023_1 m ON e.manager_id = m.employee_id
+            WHERE
+                e.employee_id = ?
+        """
+        manager_data = cursor.execute(email_query, (user_id,)).fetchone()
+        if not manager_data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong!!!"
+            }
+        email_id, manager_id = manager_data
+
+        employee_message = f"""
+            Hi,
+
+            Your Request Has been Submitted Successfully!!, You can withdraw it from "Pending Request" until it gets approved from your Manager.
+            You can login to VYAY to review the request.
+
+            Thanks,
+            Team VYAY
+        """
+        manager_message = f"""
+            Hi,
+
+            There is one request from {user_id} for Approval!!, Please review and take a valid Action.
+            You can login to VYAY to review the request using ..
+
+            Thanks,
+            Team VYAY
+        """
+        sender_email = "noreply@vyay.tech"
+        msg = Message('Request for Approval!!', sender=sender_email, recipients=[email_id])
+        msg.body = f"""
+            Hi,
+
+            There is one request from {user_id} for Approval!!, Please review and take a valid Action.
+            You can login to VYAY to review the request using ..
+
+            Thanks,
+            Team VYAY
+        """
+        mail.send(msg)
+
+        # Update the Notification in the Table Notification (Notification for Employee)
+        query = "Insert into Notification (request_id, employee_id, created_at, current_status, message) Values (?,?,?,?,?)"
+        current_date = date.today()
+
+        # For Employee:
+        cursor.execute(query, (request_id, user_id, current_date, 1, employee_message))
+        connection.commit()
+
+        # For Manager:
+        cursor.execute(query, (request_id, manager_id, current_date, 1, manager_message))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Submitted Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/expenserequest-manager-approve', methods=['POST'])
+@jwt_required()
+def expense_request_approved():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+        comment = data.get("comment")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT cash_in_advance, user_id FROM expenserequest WHERE request_id = ? AND status = 'submitted'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Submitted to get Approve!!"
+            }
+        adv_cash, user_id = result
+
+        # Validation of the Value getting in the status Variable:
+        if status != "approved":
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found !!"
+            }
+
+        query = f"UPDATE expenserequest SET status=?, comment_from_manager=? WHERE request_id=?"
+        cursor.execute(query, (status, comment, request_id))
+        connection.commit()
+
+        # get the Manager's Email of the user_id
+        email_query = """
+            SELECT
+                email_id,
+                expense_administrator_email
+            FROM
+                userproc05092023_1
+            WHERE
+                employee_id=?
+        """
+        user_data = cursor.execute(email_query, (user_id,)).fetchone()
+
+        if not user_data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong!!!"
+            }
+        email_id, exp_admin_email = user_data
+
+        # Check is there Cash Advance in the Travel request (DONE)
+        # Insert Query in the Table of the Notification:
+        query = """INSERT INTO notification(
+                        request_id,
+                        employee_id,
+                        created_at,
+                        current_status
+                   ) 
+                   Values (?,?,?,?)
+                """
+        current_date = date.today()
+
+        # Send Email to the User from Whom we got the request
+        sender_email = "noreply@vyay.tech"
+        msg = Message('Request Accepted Successfully', sender=sender_email, recipients=[email_id])
+        msg.body = f"""
+                        Hi,
+
+                        Thanks for having Patience, Your Request has been Approved Successfully.
+                        You can login to VYAY to review the request using ..
+
+                        Thanks,
+                        Team VYAY
+                    """
+        mail.send(msg)
+        cursor.execute(query, (request_id, user_id, current_date, 1))
+        connection.commit()
+
+        # Send Email to the Respective Expense Admin who belongs to that User.
+        sender_email = "noreply@vyay.tech"
+        msg = Message('Request for send for Payment!!', sender=sender_email, recipients=[email_id])
+        msg.body = f"""
+                    Hi,
+
+                    There is one request from {user_id} for Approval!!, Please review and take a valid Action.
+                    You can login to VYAY to review the request using ..
+
+                    Thanks,
+                    Team VYAY
+                """
+        mail.send(msg)
+        cursor.execute(query, (request_id, user_id, current_date, 1))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Approved Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/expenserequest-withdrawn', methods=['POST'])
+@jwt_required()
+def expense_request_withdrawn():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table if approved then can be withdrawn:
+        query = "SELECT 1 AS exists_flag FROM expenserequest WHERE request_id = ? AND status = 'approved'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request Can't be Withdrawn!!"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        if status != 'initiated':
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found"
+            }
+
+        query = f"UPDATE expenserequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Withdrawn Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/expenserequest-admin-approve', methods=['POST'])
+@jwt_required()
+def expense_request_sent_for_payment():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT user_id FROM expenserequest WHERE request_id = ? AND status = 'approved'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Approved by Manager"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        if status != "send for payment":
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found"
+            }
+
+        query = f"UPDATE expenserequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        # Send Email to the User From Whom Request Sent.
+        # Send Email to the Finance Person for this Request.
+        # Update this record in the Notification Table:
+        # Update in the Table of the Notification:
+        # query = """INSERT INTO notification(
+        #                 request_id,
+        #                 employee_id,
+        #                 created_at,
+        #                 current_status
+        #            )
+        #            Values (?,?,?,?)
+        #         """
+        # current_date = date.today()
+        # cursor.execute(query, (request_id, user_id, current_date, "approved"))
+        # connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Send for Payment Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/expenserequest-finance-approve', methods=['POST'])
+@jwt_required()
+def expense_request_paid():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT 1 AS exists_flag FROM expenserequest WHERE request_id = ? AND status = 'send for payment'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Approved from Expense Administrator"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        # ...
+
+        query = f"UPDATE expenserequest SET status=? WHERE request_id=?"
+        cursor.execute(query, (status, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Payment Made Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+@app.route('/expenserequest-send-back', methods=['POST'])
+@jwt_required()
+def expense_request_send_back():
+    try:
+        data = request.get_json()
+
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        # Validation of Required Data:
+        if "requestId" not in data or "status" not in data:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        request_id = data.get("requestId")
+        status = data.get("status")
+        comment = data.get("comment")
+
+        # Validating request_id in travel Request Table:
+        query = "SELECT 1 AS exists_flag FROM expenserequest WHERE request_id = ? AND status = 'submitted'"
+        cursor.execute(query, (request_id,))
+        result = cursor.fetchone()
+
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Request should be Submitted to Send Back!!"
+            }
+
+        # Validation of the Value getting in the status Variable:
+        if status != "rejected":
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Invalid Status Found"
+            }
+
+        query = f"UPDATE expenserequest SET status=?, comment_from_manager=? WHERE request_id=?"
+        cursor.execute(query, (status, comment, request_id))
+        connection.commit()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Request Sent Back Successfully"
+        }
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
 # ------------------------------- Dashboard API -------------------------------
 # Total Counts of Travel Requests
 @app.route('/request-count', methods=["GET"])

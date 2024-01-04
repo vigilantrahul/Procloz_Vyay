@@ -34,6 +34,7 @@ def fetch_establishment_name(result):
         print("Error: ", err)
         return None
 
+
 def fetch_bill_date(result):
     try:
         bill_date = ""

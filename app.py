@@ -1733,9 +1733,61 @@ def object_format(req):
 
 
 # 1. Expense Request Common Data Insertion:
-@app.route('/expense-request', methods=['POST'])
+@app.route('/expense-request', methods=['GET', 'POST'])
 @jwt_required()
 def expense_initiate():
+    if request.method == 'GET':
+        try:
+            request_id = request.headers.get('requestId')
+            request_policy = request.headers.get('requestPolicy')
+
+            # Validating request_id in Request Table:
+            query = "SELECT request_id, request_name, request_policy, start_date, end_date, purpose, status FROM expenserequest WHERE request_id = ?"
+
+            cursor.execute(query, (request_id,))
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+            else:
+                column_names = ['request_id', 'request_name', 'request_policy', 'start_date', 'end_date', 'purpose',
+                                'status']
+                response_data = dict(zip(column_names, result))
+                response_data = {
+                    "requestId": response_data["request_id"],
+                    "requestName": response_data["request_name"],
+                    "requestPolicy": response_data["request_policy"],
+                    "startDate": response_data["start_date"],
+                    "endDate": response_data["end_date"],
+                    "purpose": response_data["purpose"],
+                    "status": response_data["status"]
+                }
+
+                # Fetching the Total of the perdiem Amount:
+                perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+                print("perdiem_other_expense_amount: ", perdiem_other_expense)
+                # Fetching the Total of the Request:
+                amount = total_amount_request(cursor, request_id)
+                if amount is None:
+                    amount = 0
+                else:
+                    amount = amount[0]
+
+                total_amount = perdiem_other_expense + amount
+                return {
+                    "amount": total_amount,
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseData": response_data,
+                    'responseMessage': 'Travel Request Fetched Successfully'
+                }
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong While Fetching Record",
+                "reason": str(err)
+            })
     if request.method == 'POST':
         # Saving the Request Data
         try:
@@ -1822,7 +1874,7 @@ def expense_initiate():
 
 
 # 2. updating Cost Center
-@app.route('/expense-cost-center', methods=['POST'])
+@app.route('/expense-cost-center', methods=['GET', 'POST'])
 @jwt_required()
 def expense_update_cost_center():
     if not connection:
@@ -1833,6 +1885,90 @@ def expense_update_cost_center():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get('requestId')
+            organization = request.headers.get('organization')
+            employee = request.headers.get('employeeId')
+            # request_type = request.headers.get('requestType')
+            request_policy = request.headers.get('requestPolicy')
+            # if request_type is None:
+            #     return {
+            #         "responseCode": http_status_codes.HTTP_200_OK,
+            #         "responseMessage": "Invalid Request Type Found"
+            #     }
+
+            if organization is None or employee is None:
+                return {
+                    "responseCode": 400,
+                    "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
+                }
+
+            try:
+                qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
+                user_data = cursor.execute(qry_1, employee).fetchall()
+                qry_2 = "SELECT cost_center FROM expenserequest WHERE request_id=?"
+
+                cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
+            except Exception as err_1:
+                return {
+                    "error": str(err_1),
+                    "responseCode": 500,
+                    "responseMessage": "Error is Occurring"
+                }
+
+            task_list = [{'employee_id': user.employee_id,
+                          'employee_first_name': user.employee_first_name,
+                          'employee_middle_name': user.employee_middle_name,
+                          'employee_last_name': user.employee_last_name,
+                          'employee_business_title': user.employee_business_title,
+                          'cost_center': user.costcenter,
+                          'employee_country_name': user.employee_country_name,
+                          'employee_currency_code': user.employee_currency_code,
+                          'employee_currency_name': user.employee_currency_name,
+                          'manager_id': user.manager_id,
+                          'l1_manager_id': user.l1_manager_id,
+                          'l2_manager_id': user.l2_manager_id,
+                          'expense_administrator': user.expense_administrator,
+                          'finance_contact_person': user.finance_contact_person,
+                          'company_name': user.organization,
+                          'business_unit': user.business_unit,
+                          'department': user.department,
+                          'function': user.func}
+                         for user in user_data]
+            if len(task_list) == 1:
+                task_list = task_list[0]
+                if cost_center is not None:
+                    task_list["cost_center"] = cost_center[0]
+            else:
+                task_list = None
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            print("perdiem_other_expense: ", perdiem_other_expense)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            return jsonify({
+                "amount": total_amount,
+                "responseCode": 200,
+                "responseMessage": "Success",
+                "data": task_list
+            })
+
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
     if request.method == "POST":
         data = request.get_json()
@@ -1905,7 +2041,17 @@ def expense_transport():
                     expensetransporttripmapping.estimated_cost,
                     expensetransporttripmapping.from_date,
                     expensetransporttripmapping.to_date,
-                    expensetransporttripmapping.comment
+                    expensetransporttripmapping.comment,
+                    expensetransporttripmapping.establishment_name,
+                    expensetransporttripmapping.bill_date,
+                    expensetransporttripmapping.bill_number,
+                    expensetransporttripmapping.bill_currency,
+                    expensetransporttripmapping.bill_amount,
+                    expensetransporttripmapping.exchange_rate,
+                    expensetransporttripmapping.final_amount,
+                    expensetransporttripmapping.expense_type,
+                    expensetransporttripmapping.bill_file,
+                    expensetransporttripmapping.bill_file_original_name
                 FROM expensetransport
                 LEFT JOIN expensetransporttripmapping ON expensetransport.id = expensetransporttripmapping.transport
                 WHERE expensetransport.request_id = ?
@@ -1932,7 +2078,6 @@ def expense_transport():
                         'tripType': trip_type,
                         'trips': []
                     }
-
                 if current_transport["transportType"] == "bus" or current_transport["transportType"] == "flight" or \
                         current_transport["transportType"] == "train":
                     # Add trip mapping data to the current transport entry
@@ -1941,21 +2086,55 @@ def expense_transport():
                             'from': trip_mapping_data[0],
                             'to': trip_mapping_data[1],
                             'departureDate': trip_mapping_data[2],
-                            'estimateCost': trip_mapping_data[3]
+                            'estimateCost': trip_mapping_data[3],
+                            'establishmentName': trip_mapping_data[7],
+                            'billDate': trip_mapping_data[8],
+                            'billNumber': trip_mapping_data[9],
+                            'billCurrency': trip_mapping_data[10],
+                            'billAmount': trip_mapping_data[11],
+                            'exchangeRate': trip_mapping_data[12],
+                            'finalAmount': trip_mapping_data[13],
+                            'expenseType': trip_mapping_data[14],
+                            'billFile': trip_mapping_data[15],
+                            'billFileOriginalName': trip_mapping_data[16]
                         }
                         current_transport['trips'].append(trip_mapping)
 
                 elif current_transport["transportType"] == "taxi":
-                    current_transport["estimateCost"] = trip_mapping_data[3]
-                    current_transport["comment"] = trip_mapping_data[6]
-                    del current_transport["tripType"]
-                    del current_transport["trips"]
+                    if trip_mapping_data:
+                        trip_mapping = {
+                            'from': trip_mapping_data[0],
+                            'to': trip_mapping_data[1],
+                            'departureDate': trip_mapping_data[2],
+                            'estimateCost': trip_mapping_data[3],
+                            'establishmentName': trip_mapping_data[7],
+                            'billDate': trip_mapping_data[8],
+                            'billNumber': trip_mapping_data[9],
+                            'billCurrency': trip_mapping_data[10],
+                            'billAmount': trip_mapping_data[11],
+                            'exchangeRate': trip_mapping_data[12],
+                            'finalAmount': trip_mapping_data[13],
+                            'expenseType': trip_mapping_data[14],
+                            'billFile': trip_mapping_data[15],
+                            'billFileOriginalName': trip_mapping_data[16]
+                        }
+                        current_transport['trips'].append(trip_mapping)
 
                 elif current_transport["transportType"] == "carRental":
                     current_transport["estimateCost"] = trip_mapping_data[3]
                     current_transport["startDate"] = trip_mapping_data[4]
                     current_transport["endDate"] = trip_mapping_data[5]
                     current_transport["comment"] = trip_mapping_data[6]
+                    current_transport["establishmentName"] = trip_mapping_data[7]
+                    current_transport["billDate"] = trip_mapping_data[8]
+                    current_transport["billNumber"] = trip_mapping_data[9]
+                    current_transport["billCurrency"] = trip_mapping_data[10]
+                    current_transport["billAmount"] = trip_mapping_data[11]
+                    current_transport["exchangeRate"] = trip_mapping_data[12]
+                    current_transport["finalAmount"] = trip_mapping_data[13]
+                    current_transport["billFile"] = trip_mapping_data[14]
+                    current_transport["billFileOriginalName"] = trip_mapping_data[15]
+
                     del current_transport["tripType"]
                     del current_transport["trips"]
 
@@ -2164,7 +2343,7 @@ def expense_hotel():
 
 # 5. Request PerDiem on Travel
 @jwt_required()
-@app.route('/expense-perdiem', methods=['POST'])
+@app.route('/expense-perdiem', methods=['GET', 'POST'])
 def expense_perdiem():
     # Validation for the Connection on DB/Server
     if not connection:
@@ -2175,6 +2354,55 @@ def expense_perdiem():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")
+            request_policy = request.headers.get("requestPolicy")
+
+            if request_id is None:
+                return {
+                    "responseCode": 400,
+                    "responseMessage": "(Debug) -> requestId is required Field"
+                }
+
+            query = "SELECT * from expenseperdiem WHERE request_id=?"
+            request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
+            per_diem_list = [
+                {
+                    'date': diem.diem_date,  # 'date': diem.diem_date.strftime('%d/%m/%Y'),
+                    "breakfast": diem.breakfast,
+                    "lunch": diem.lunch,
+                    "dinner": diem.dinner
+                }
+                for diem in request_perdiem_data
+            ]
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            print("perdiem_other_expense: ", perdiem_other_expense)
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = perdiem_other_expense + amount
+
+            response_data = {
+                "amount": total_amount,
+                "data": per_diem_list,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Hotel Request Successfully Fetched"
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
     if request.method == "POST":
         try:
@@ -2236,7 +2464,7 @@ def expense_perdiem():
 
 
 # 6. Request Advance Cash on Travel
-@app.route('/expense-advcash', methods=['POST'])
+@app.route('/expense-advcash', methods=['GET', 'POST'])
 @jwt_required()
 def expense_advcash():
     # Validation for the Connection on DB/Server:
@@ -2248,6 +2476,52 @@ def expense_advcash():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")
+            request_policy = request.headers.get("requestPolicy")
+
+            query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
+            cursor.execute(query, (request_id,))
+
+            # Fetch the data
+            cash_advance_data = cursor.fetchone()
+
+            # Check if data is found
+            if cash_advance_data:
+                cash_in_advance, reason_cash_in_advance = cash_advance_data
+            else:
+                cash_in_advance = None
+                reason_cash_in_advance = None
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            response_data = {
+                "amount": total_amount,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Cash Advance Data Fetched",
+                "data": {
+                    "cashInAdvance": cash_in_advance,
+                    "reasonCashInAdvance": reason_cash_in_advance
+                }
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
     if request.method == "POST":
         try:
@@ -2282,7 +2556,7 @@ def expense_advcash():
 
 
 # 7. Other Expense API
-@app.route('/expense-other-expense', methods=['POST'])
+@app.route('/expense-other-expense', methods=['GET', 'POST'])
 @jwt_required()
 def expense_other_expense():
     if not connection:
@@ -2293,6 +2567,51 @@ def expense_other_expense():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+    if request.method == 'GET':
+        try:
+            request_id = request.headers.get("requestId")
+            request_policy = request.headers.get("requestPolicy")
+
+            query = "SELECT international_roaming, incident_expense from expenserequest where request_id=?"
+            cursor.execute(query, (request_id,))
+
+            # Fetch the data
+            other_expense_data = cursor.fetchone()
+
+            # Check if data is found
+            if other_expense_data:
+                international_roaming, incident_expense = other_expense_data
+            else:
+                international_roaming = None
+                incident_expense = None
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            response_data = {
+                "amount": amount,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Other Expense Data Fetched",
+                "data": {
+                    "internationalRoaming": international_roaming,
+                    "incidentExpense": incident_expense
+                }
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return {
+                "reason": str(err),
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong!!"
+            }
 
     if request.method == "POST":
         try:

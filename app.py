@@ -4482,7 +4482,13 @@ def file_ocr_data():
     except Exception as err:
         return {
             "reason": str(err),
-            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "fileDate": {
+                "billNumber": "",
+                "billAmount": "",
+                "billDate": "",
+                "establishmentName": ""
+            },
+            "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Something Went Wrong !!"
         }
 

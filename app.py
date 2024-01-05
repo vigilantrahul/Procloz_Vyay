@@ -2200,7 +2200,6 @@ def expense_transport():
                 return result
 
             if transport_type == "carRental":
-                print("Got the condition of the Car Rental")
                 result = expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request, container_client, employee_id)
                 return result
 

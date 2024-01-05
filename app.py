@@ -19,6 +19,7 @@ from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
 from request_list import request_list, pull_request
+from expense_request_list import expense_request_list
 from TotalAmountRequest import total_amount_request, total_perdiem_or_expense_amount
 from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
     clear_perdiem_data, clear_transport_data
@@ -3838,7 +3839,7 @@ def expense_request_send_back():
         })
 
 
-# ------------------------------- Dashboard API -------------------------------
+# ------------------------------- Travel Dashboard API -------------------------------
 # Total Counts of Travel Requests
 @app.route('/request-count', methods=["GET"])
 @jwt_required()
@@ -4083,6 +4084,71 @@ def pull_request_list():
             "responseMessage": "Something Went Wrong !!"
         }
 
+
+# ------------------------------- Expense Dashboard API -------------------------------
+# Total Request of Specific Employee:
+@app.route('/expense-request-list', methods=['GET'])
+def expense_request_lists():
+    print("Came Here Now to test !!")
+    try:
+        employeeId = request.headers.get('employeeId')
+
+        # Condition of Required Data in Request
+        if employeeId is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
+            }
+
+        data_list = expense_request_list(cursor, employeeId)
+        print("Data List: ", data_list)
+        open_req = []
+        total_req = []
+        to_be_approve = []
+        pending_req = []
+        for req in data_list:
+            print("Request: ", req)
+            # Code to get the PerDiem and Other Expense Amount:
+            request_id = req[1]
+            print("Request_Id: ", request_id)
+            request_policy = req[4]
+            print("Request Policy: ", request_policy)
+            # other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            # print("other Expense: ", other_expense_total)
+            data_dict = {
+                'request_id': request_id,
+                'request_name': req[2],
+                'start_date': req[3],
+                'request_policy': request_policy,
+                'employee_name': req[5],
+                'status': req[7],
+                'total_amount': (req[15])  # + other_expense_total
+            }
+            if req[0] == 'Open Request':
+                open_req.append(data_dict)
+            elif req[0] == 'Pending Request':
+                pending_req.append(data_dict)
+            elif req[0] == 'Total Request':
+                total_req.append(data_dict)
+            elif req[0] == 'To Be Approved':
+                to_be_approve.append(data_dict)
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": {
+                "totalRequest": total_req,
+                "pendingRequest": pending_req,
+                "openRequest": open_req,
+                "toBeApproved": to_be_approve
+            },
+            "responseMessage": "Data Fetched Successfully"
+        }
+
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong."
+        }
 
 # ------------------------------- Data Fetch API -------------------------------
 
@@ -4484,7 +4550,7 @@ def file_ocr_data():
             "fileData": {
                 "billNumber": "",
                 "billAmount": "",
-                "billDate": "",
+                "billDate": None,
                 "establishmentName": ""
             },
             "responseCode": http_status_codes.HTTP_200_OK,

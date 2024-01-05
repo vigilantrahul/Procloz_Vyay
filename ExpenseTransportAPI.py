@@ -5,7 +5,8 @@ from file_upload import upload_file
 def convert_to_float(value):
     try:
         return float(value)
-    except (ValueError, TypeError):
+    except Exception as err:
+        print("Reason: ", err)
         return 0
 
 

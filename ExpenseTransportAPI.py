@@ -47,15 +47,15 @@ def clear_expense_transport_data(cursor, connection, request_id, transport_type,
 
 
 def expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id):
-
-    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    query = "SELECT TOP 1 1 AS exists_flag FROM expensetransport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        query = "DELETE FROM expensetransport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type,))
+        connection.commit()
 
     # Code for the request Process:
     for obj in objects:
@@ -99,7 +99,7 @@ def expense_flight_data(cursor, connection, request_id, transport_type, trip_way
         query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         cursor.execute(query, (trip_from, trip_to, departureDate, estimate_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exc_rate, final_amount, expense_type, file_name, original_file_name, transport_id))
         connection.commit()
-
+        print("Data Inserted in Both Table")
     return ({
         "responseCode": http_status_codes.HTTP_200_OK,
         "responseMessage": "Flight Data Saved Successfully"
@@ -107,14 +107,15 @@ def expense_flight_data(cursor, connection, request_id, transport_type, trip_way
 
 
 def expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id):
-    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    query = "SELECT TOP 1 1 AS exists_flag FROM expensetransport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        query = "DELETE FROM expensetransport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type, ))
+        connection.commit()
 
     # Code for the request Process:
     for obj in objects:
@@ -165,13 +166,13 @@ def expense_train_data(cursor, connection, request_id, transport_type, trip_way,
 
 
 def expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id):
-    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    query = "SELECT TOP 1 1 AS exists_flag FROM expensetransport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        query = "DELETE FROM expensetransport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type, ))
 
     # Code for the request Process:
@@ -222,13 +223,13 @@ def expense_bus_data(cursor, connection, request_id, transport_type, trip_way, o
 
 
 def expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id):
-    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    query = "SELECT TOP 1 1 AS exists_flag FROM expensetransport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        query = "DELETE FROM expensetransport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type,))
 
     # Code for the request Process:
@@ -281,13 +282,13 @@ def expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, 
 
 
 def expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request, container_client, employee_id):
-    query = "SELECT TOP 1 1 AS exists_flag FROM transport WHERE request_id=? and transport_type=?"
+    query = "SELECT TOP 1 1 AS exists_flag FROM expensetransport WHERE request_id=? and transport_type=?"
     cursor.execute(query, (request_id, transport_type,))
     result = cursor.fetchone()
 
     # Condition is that request_id data available in the transport table
     if result:
-        query = "DELETE FROM transport where request_id=? and transport_type=?"
+        query = "DELETE FROM expensetransport where request_id=? and transport_type=?"
         cursor.execute(query, (request_id, transport_type,))
 
     # Code for the request Process:

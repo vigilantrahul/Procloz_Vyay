@@ -58,7 +58,7 @@ def expired_token_callback(arg1, arg2):
 def invalid_token_callback(error):
     return jsonify({
         'responseMessage': 'Invalid token',
-        'responseCode': custom_status_codes.invalid_token
+        'responseCode': 1
     })
 
 

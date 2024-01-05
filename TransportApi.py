@@ -33,7 +33,7 @@ def clear_perdiem_data(cursor, connection, request_id, request_type=None):
 
 def clear_transport_data(cursor, connection, request_id, transport_type, request_type=None):
     if request_type == "expense":
-        query = "DELETE FROM transport Where request_id=? and transport_type=?"
+        query = "DELETE FROM expensetransport Where request_id=? and transport_type=?"
     else:
         query = "DELETE FROM transport Where request_id=? and transport_type=?"
 

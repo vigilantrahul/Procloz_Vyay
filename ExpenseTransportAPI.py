@@ -96,7 +96,7 @@ def expense_flight_data(cursor, connection, request_id, transport_type, trip_way
 
         transport_id = row_id[0]
 
-        query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        query = f"INSERT INTO expensetransporttripmapping (trip_from, trip_to, departure_date, estimated_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exchange_rate, final_amount, expense_type, bill_file, bill_file_original_name, transport) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         cursor.execute(query, (trip_from, trip_to, departureDate, estimate_cost, establishment_name, bill_date, bill_number, bill_currency, bill_amount, exc_rate, final_amount, expense_type, file_name, original_file_name, transport_id))
         connection.commit()
 

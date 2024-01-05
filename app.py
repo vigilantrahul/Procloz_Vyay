@@ -4482,7 +4482,7 @@ def file_ocr_data():
     except Exception as err:
         return {
             "reason": str(err),
-            "fileDate": {
+            "fileData": {
                 "billNumber": "",
                 "billAmount": "",
                 "billDate": "",

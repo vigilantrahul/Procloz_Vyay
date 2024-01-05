@@ -1455,8 +1455,8 @@ def other_expense():
                 }
 
             if "incidentExpense" in data or "internationalRoaming" in data:
-                international_roaming = data.get("international_roaming")
-                incident_expense = data.get("incident_expense")
+                international_roaming = data.get("internationalRoaming")
+                incident_expense = data.get("incidentExpense")
 
                 query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
                 cursor.execute(query, (international_roaming, incident_expense, request_id))
@@ -4550,7 +4550,7 @@ def file_ocr_data():
             "fileData": {
                 "billNumber": "",
                 "billAmount": "",
-                "billDate": None,
+                "billDate": "",
                 "establishmentName": ""
             },
             "responseCode": http_status_codes.HTTP_200_OK,

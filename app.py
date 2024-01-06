@@ -1488,53 +1488,53 @@ def other_expense():
             })
 
 
-# # 8. Clearing Data API
-# @app.route('/clear-data', methods=['POST'])
-# @jwt_required()
-# def clear_data():
-#     try:
-#         data = request.get_json()
-#         request_id = data["requestId"]
-#         request_type = data["requestType"]
-#         if request_type == "transport":
-#             if "transportType" not in data:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Transport Type is a Required Field"
-#                 }
-#         if "transportType" in data:
-#             transport_type = data["transportType"]
-#         else:
-#             transport_type = None
-#
-#         # Validation of None Value
-#         if request_type is None:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "(DEBUG) -> requestType not found"
-#             }
-#
-#         # Checking the Condition for the Request Type
-#         if request_type.lower() == "hotel":
-#             result = clear_hotel_data(cursor, connection, request_id)
-#             return result
-#         elif request_type.lower() == "perdiem":
-#             result = clear_perdiem_data(cursor, connection, request_id)
-#             return result
-#         elif request_type.lower() == "transport":
-#             result = clear_transport_data(cursor, connection, request_id, transport_type)
-#             return result
-#         else:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "(DEBUG) -> Invalid request_type Found"
-#             }
-#     except Exception as err:
-#         return {
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong",
-#             "reason": str(err)
-#         }
+# 8. Clearing Data API
+@app.route('/clear-data', methods=['POST'])
+@jwt_required()
+def clear_data():
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+        request_type = data["requestType"]
+        if request_type == "transport":
+            if "transportType" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Transport Type is a Required Field"
+                }
+        if "transportType" in data:
+            transport_type = data["transportType"]
+        else:
+            transport_type = None
+
+        # Validation of None Value
+        if request_type is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> requestType not found"
+            }
+
+        # Checking the Condition for the Request Type
+        if request_type.lower() == "hotel":
+            result = clear_hotel_data(cursor, connection, request_id)
+            return result
+        elif request_type.lower() == "perdiem":
+            result = clear_perdiem_data(cursor, connection, request_id)
+            return result
+        elif request_type.lower() == "transport":
+            result = clear_transport_data(cursor, connection, request_id, transport_type)
+            return result
+        else:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> Invalid request_type Found"
+            }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
 
 
 # # 9. Canceling Request Data API

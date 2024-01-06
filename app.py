@@ -1669,34 +1669,34 @@ def request_detail():
 # ------------------------------- Expense Initiating API -------------------------------
 
 # API to Upload File:
-# def upload_file(file):
-#     try:
-#         if file.filename == '':
-#             return {
-#                 "responseMessage": "No selected file",
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
-#             }
-#
-#         # Generate a unique filename using timestamp and/or uuid
-#         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-#         unique_id = str(uuid.uuid4())
-#         original_filename, file_extension = os.path.splitext(file.filename)
-#         unique_filename = f"{original_filename}_{timestamp}_{unique_id}{file_extension}"
-#
-#         blob_client = container_client.get_blob_client(unique_filename)
-#         blob_client.upload_blob(file)
-#         return {
-#             'original_name': original_filename,
-#             'filename': unique_filename,
-#             'responseCode': http_status_codes.HTTP_200_OK,
-#             'responseMessage': 'File uploaded successfully'
-#         }
-#     except Exception as err:
-#         return {
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong!!",
-#             "error": str(err)
-#         }
+def upload_file(file):
+    try:
+        if file.filename == '':
+            return {
+                "responseMessage": "No selected file",
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+            }
+
+        # Generate a unique filename using timestamp and/or uuid
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_id = str(uuid.uuid4())
+        original_filename, file_extension = os.path.splitext(file.filename)
+        unique_filename = f"{original_filename}_{timestamp}_{unique_id}{file_extension}"
+
+        blob_client = container_client.get_blob_client(unique_filename)
+        blob_client.upload_blob(file)
+        return {
+            'original_name': original_filename,
+            'filename': unique_filename,
+            'responseCode': http_status_codes.HTTP_200_OK,
+            'responseMessage': 'File uploaded successfully'
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong!!",
+            "error": str(err)
+        }
 
 
 # # API for Preview File:
@@ -1723,30 +1723,30 @@ def request_detail():
 #             'responseMessage': 'File not found',
 #             'responseCode': http_status_codes.HTTP_404_NOT_FOUND
 #         }
-#
-#
-# # Function to get the proper Object Format:
-# def object_format(req):
-#     # Initialize a list to store the objects
-#     objects = []
-#
-#     for key in set(req.form.keys()) | set(req.files.keys()):
-#         match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
-#         if match:
-#             index, field = map(match.group, [1, 2])
-#             index = int(index)
-#
-#             # Create dictionaries for each index if not present
-#             while len(objects) <= index:
-#                 objects.append({})
-#
-#             # Assign values to the corresponding field in the dictionary
-#             value = req.form.get(key) if key in req.form else req.files.get(key)
-#             objects[index][field] = value
-#
-#     return objects
-#
-#
+
+
+# Function to get the proper Object Format:
+def object_format(req):
+    # Initialize a list to store the objects
+    objects = []
+
+    for key in set(req.form.keys()) | set(req.files.keys()):
+        match = re.match(r'objects\[(\d+)\]\[\'?(\w+)\'?\]', key)
+        if match:
+            index, field = map(match.group, [1, 2])
+            index = int(index)
+
+            # Create dictionaries for each index if not present
+            while len(objects) <= index:
+                objects.append({})
+
+            # Assign values to the corresponding field in the dictionary
+            value = req.form.get(key) if key in req.form else req.files.get(key)
+            objects[index][field] = value
+
+    return objects
+
+
 # 1. Expense Request Common Data Insertion:
 @app.route('/expense-request', methods=['GET', 'POST'])
 @jwt_required()
@@ -2235,133 +2235,129 @@ def expense_update_cost_center():
 #                 "responseMessage": "Something Went Wrong",
 #                 "reason": str(err)  # Error Code comes here
 #             })
-#
-#
-# # 4. Request Hotel on Travel
-# @app.route('/expense-hotel', methods=['GET', 'POST'])
-# # @jwt_required()
-# def expense_hotel():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get('requestId')
-#             query = " Select * from expensehotel where request_id=?"
-#             cursor.execute(query, (request_id,))
-#             hotel_data_list = cursor.fetchall()
-#
-#             response_list = []
-#             for hotel_data in hotel_data_list:
-#                 response_dict = {
-#                     "cityName": hotel_data.city_name,
-#                     "startDate": hotel_data.start_date,
-#                     "endDate": hotel_data.end_date,
-#                     "estimatedCost": hotel_data.estimated_cost,
-#                     "exchangeRate": hotel_data.exchange_rate,
-#                     "billDate": hotel_data.bill_date,
-#                     "billNumber": hotel_data.bill_number,
-#                     "billAmount": hotel_data.bill_amount,
-#                     "billCurrency": hotel_data.bill_currency,
-#                     "expenseType": hotel_data.expense_type,
-#                     "establishmentName": hotel_data.establishment_name,
-#                     "finalAmount": hotel_data.final_amount,
-#                     "billFile": hotel_data.bill_file,
-#                     "billFileOriginalName": hotel_data.bill_file_original_name
-#                 }
-#                 response_list.append(response_dict)
-#
-#             return {
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Data Fetched Successfully",
-#                 "data": response_list
-#             }
-#         except Exception as err:
-#             return {
-#                 "reason": str(err),
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "responseMessage": "Something Went Wrong"
-#             }
-#
-#     if request.method == "POST":
-#         print("Function Called !!")
-#         try:
-#             request_id = request.form.get('requestId')
-#             print("requestId: ", request_id)
-#             objects = object_format(request)
-#
-#             # Validating the Request ID in the Travel Request Table:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#             if result is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Request ID Not Exists!!"
-#                 }
-#
-#             # Validation for the hotel data in Expense Hotel Table:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM expensehotel WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#             if result:
-#                 # Code to Delete the previous Data related to that request ID:
-#                 sql_query = "DELETE FROM expensehotel WHERE request_id = ?"
-#                 cursor.execute(sql_query, (request_id,))
-#                 connection.commit()
-#
-#             # Now 'objects' is a list of dictionaries
-#             for obj in objects:
-#                 start_date = obj.get('startDate')
-#                 end_date = obj.get('endDate')
-#                 city_name = obj.get('cityName')
-#                 estimated_cost = obj.get('estimatedCost')
-#                 bill_date = obj.get('billDate')
-#                 bill_number = obj.get('billNumber')
-#                 bill_currency = obj.get('billCurrency')
-#                 bill_amount = obj.get('billAmount')
-#                 expense_type = obj.get('expenseType')
-#                 establishment_name = obj.get('establishmentName')
-#                 final_amount = obj.get('finalAmount')
-#                 exc_rate = obj.get('exchangeRate')
-#                 file_name = obj.get('billFile', None)
-#                 original_file_name = obj.get('billFileOriginal', None)
-#
-#                 if file_name is None and original_file_name is None:
-#                     file = obj.get('file')
-#                     file_data = upload_file(file)  # Uploading File Here
-#                     if "responseCode" in file_data and file_data["responseCode"] == 500:
-#                         return file_data
-#
-#                     file_name = file_data["filename"]
-#                     original_file_name = file_data["original_name"]
-#
-#                 # Execute the query
-#                 query = "INSERT INTO expensehotel (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exchange_rate, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-#                 cursor.execute(query, (
-#                 city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount,
-#                 expense_type, establishment_name, exc_rate, final_amount, file_name, original_file_name, request_id))
-#                 connection.commit()
-#
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Hotels Saved Successfully",
-#             })
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#
+
+
+# 4. Request Hotel on Travel
+@app.route('/expense-hotel', methods=['GET', 'POST'])
+# @jwt_required()
+def expense_hotel():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get('requestId')
+            query = " Select * from expensehotel where request_id=?"
+            cursor.execute(query, (request_id,))
+            hotel_data_list = cursor.fetchall()
+
+            response_list = []
+            for hotel_data in hotel_data_list:
+                response_dict = {
+                    "cityName": hotel_data.city_name,
+                    "startDate": hotel_data.start_date,
+                    "endDate": hotel_data.end_date,
+                    "estimatedCost": hotel_data.estimated_cost,
+                    "exchangeRate": hotel_data.exchange_rate,
+                    "billDate": hotel_data.bill_date,
+                    "billNumber": hotel_data.bill_number,
+                    "billAmount": hotel_data.bill_amount,
+                    "billCurrency": hotel_data.bill_currency,
+                    "expenseType": hotel_data.expense_type,
+                    "establishmentName": hotel_data.establishment_name,
+                    "finalAmount": hotel_data.final_amount,
+                    "billFile": hotel_data.bill_file,
+                    "billFileOriginalName": hotel_data.bill_file_original_name
+                }
+                response_list.append(response_dict)
+
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Data Fetched Successfully",
+                "data": response_list
+            }
+        except Exception as err:
+            return {
+                "reason": str(err),
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong"
+            }
+
+    if request.method == "POST":
+        try:
+            request_id = request.form.get('requestId')
+            objects = object_format(request)
+
+            # Validating the Request ID in the Travel Request Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            # Validation for the hotel data in Expense Hotel Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM expensehotel WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result:
+                # Code to Delete the previous Data related to that request ID:
+                sql_query = "DELETE FROM expensehotel WHERE request_id = ?"
+                cursor.execute(sql_query, (request_id,))
+                connection.commit()
+
+            # Now 'objects' is a list of dictionaries
+            for obj in objects:
+                start_date = obj.get('startDate')
+                end_date = obj.get('endDate')
+                city_name = obj.get('cityName')
+                estimated_cost = obj.get('estimatedCost')
+                bill_date = obj.get('billDate')
+                bill_number = obj.get('billNumber')
+                bill_currency = obj.get('billCurrency')
+                bill_amount = obj.get('billAmount')
+                expense_type = obj.get('expenseType')
+                establishment_name = obj.get('establishmentName')
+                final_amount = obj.get('finalAmount')
+                exc_rate = obj.get('exchangeRate')
+                file_name = obj.get('billFile', None)
+                original_file_name = obj.get('billFileOriginal', None)
+
+                if file_name is None and original_file_name is None:
+                    file = obj.get('file')
+                    file_data = upload_file(file)  # Uploading File Here
+                    if "responseCode" in file_data and file_data["responseCode"] == 500:
+                        return file_data
+
+                    file_name = file_data["filename"]
+                    original_file_name = file_data["original_name"]
+
+                # Execute the query
+                query = "INSERT INTO expensehotel (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exchange_rate, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                cursor.execute(query, (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exc_rate, final_amount, file_name, original_file_name, request_id))
+                connection.commit()
+
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Hotels Saved Successfully",
+            })
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+
 # # 5. Request PerDiem on Travel
 # @jwt_required()
 # @app.route('/expense-perdiem', methods=['GET', 'POST'])

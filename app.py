@@ -270,87 +270,87 @@ def refresh():
     return jsonify(response_data)
 
 
-# # Generate a 4-digit OTP
-# def generate_otp():
-#     return random.randint(1000, 9999)
+# Generate a 4-digit OTP
+def generate_otp():
+    return random.randint(1000, 9999)
 
 
-# # FORGET PASSWORD API
-# @app.route('/forget-password', methods=['POST'])
-# def forgot_password():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     data = request.get_json()
-#     email = data.get('email', '')
-#
-#     if email == '':
-#         return jsonify(error='Email found Blank')
-#
-#     # Check if the email exists in the database
-#     query = "SELECT * FROM userproc05092023_1 WHERE email_id=?"
-#     cursor.execute(query, email)
-#     user = cursor.fetchone()
-#
-#     response_data = {}
-#     if user:
-#         # Generate a new OTP
-#         otp = generate_otp()
-#
-#         # Timing When OTP got Created
-#         current_time = time.time()
-#
-#         # Store the OTP in the database
-#         query = "UPDATE userproc05092023_1 SET otp=?, otp_created_at=? WHERE email_id=?"
-#         cursor.execute(query, (otp, current_time, email))
-#         connection.commit()
-#         sender_email = "noreply@vyay.tech"
-#
-#         # Send the OTP to the user's email
-#         msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
-#         msg.body = f'Your OTP is: {otp}'
-#         mail.send(msg)
-#         response_data["responseMessage"] = 'OTP sent to your email'
-#         response_data["responseCode"] = http_status_codes.HTTP_200_OK
-#
-#         return jsonify(response_data)
-#     else:
-#         response_data["responseMessage"] = 'Invalid Email Found'
-#         response_data["responseCode"] = http_status_codes.HTTP_404_NOT_FOUND
-#
-#         return jsonify(response_data)
+# FORGET PASSWORD API
+@app.route('/forget-password', methods=['POST'])
+def forgot_password():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    data = request.get_json()
+    email = data.get('email', '')
+
+    if email == '':
+        return jsonify(error='Email found Blank')
+
+    # Check if the email exists in the database
+    query = "SELECT * FROM userproc05092023_1 WHERE email_id=?"
+    cursor.execute(query, email)
+    user = cursor.fetchone()
+
+    response_data = {}
+    if user:
+        # Generate a new OTP
+        otp = generate_otp()
+
+        # Timing When OTP got Created
+        current_time = time.time()
+
+        # Store the OTP in the database
+        query = "UPDATE userproc05092023_1 SET otp=?, otp_created_at=? WHERE email_id=?"
+        cursor.execute(query, (otp, current_time, email))
+        connection.commit()
+        sender_email = "noreply@vyay.tech"
+
+        # Send the OTP to the user's email
+        msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
+        msg.body = f'Your OTP is: {otp}'
+        mail.send(msg)
+        response_data["responseMessage"] = 'OTP sent to your email'
+        response_data["responseCode"] = http_status_codes.HTTP_200_OK
+
+        return jsonify(response_data)
+    else:
+        response_data["responseMessage"] = 'Invalid Email Found'
+        response_data["responseCode"] = http_status_codes.HTTP_404_NOT_FOUND
+
+        return jsonify(response_data)
 
 
-# # Database logic for verifying OTP and updating password
-# @app.route('/otp-verify', methods=['POST'])
-# def verify_otp_code():
-#     data = request.json
-#     req_otp = data.get('otp', '')
-#     email = data.get('email', '')
-#     req_otp = int(req_otp)
-#
-#     query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
-#     cursor.execute(query, email)
-#     result = cursor.fetchone()
-#
-#     if result is None:
-#         return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
-#
-#     otp, otp_created_at = result
-#     current_time = int(time.time())
-#     remaining_time = (current_time - otp_created_at)
-#
-#     if otp != req_otp or remaining_time >= 300:  # Checking here for Right OTP and Under the valid Timing
-#         return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid OTP Found"}
-#     else:
-#         return {"responseCode": http_status_codes.HTTP_200_OK, "responseMessage": "OTP Verified"}
+# Database logic for verifying OTP and updating password
+@app.route('/otp-verify', methods=['POST'])
+def verify_otp_code():
+    data = request.json
+    req_otp = data.get('otp', '')
+    email = data.get('email', '')
+    req_otp = int(req_otp)
+
+    query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
+    cursor.execute(query, email)
+    result = cursor.fetchone()
+
+    if result is None:
+        return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
+
+    otp, otp_created_at = result
+    current_time = int(time.time())
+    remaining_time = (current_time - otp_created_at)
+
+    if otp != req_otp or remaining_time >= 300:  # Checking here for Right OTP and Under the valid Timing
+        return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid OTP Found"}
+    else:
+        return {"responseCode": http_status_codes.HTTP_200_OK, "responseMessage": "OTP Verified"}
 
 
 # # RESET PASSWORD

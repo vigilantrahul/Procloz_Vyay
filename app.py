@@ -1239,253 +1239,253 @@ def request_perdiem():
             })
 
 
-# # 6. Request Advance Cash on Travel
-# @app.route('/request-advcash', methods=['GET', 'POST'])
-# @jwt_required()
-# def request_advcash():
-#     # Validation for the Connection on DB/Server:
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get("requestId")
-#             request_type = request.headers.get("requestType")
-#             request_policy = request.headers.get("requestPolicy")
-#
-#             if request_id is None or request_type is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "(DEBUG) -> RequestId is Required or Invalid Request Type Found"
-#                 }
-#
-#             if request_type == "travel":  # From Travel Request Data
-#                 query = "SELECT cash_in_advance, reason_cash_in_advance FROM travelrequest WHERE request_id = ?"
-#             else:  # From Expense Request Data
-#                 query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
-#
-#             cursor.execute(query, (request_id,))
-#
-#             # Fetch the data
-#             cash_advance_data = cursor.fetchone()
-#
-#             # Check if data is found
-#             if cash_advance_data:
-#                 cash_in_advance, reason_cash_in_advance = cash_advance_data
-#             else:
-#                 cash_in_advance = None
-#                 reason_cash_in_advance = None
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             if amount is None:
-#                 amount = 0
-#             else:
-#                 amount = amount[0]
-#
-#             total_amount = amount + perdiem_other_expense
-#             response_data = {
-#                 "amount": total_amount,
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Cash Advance Data Fetched",
-#                 "data": {
-#                     "cashInAdvance": cash_in_advance,
-#                     "reasonCashInAdvance": reason_cash_in_advance
-#                 }
-#             }
-#             return jsonify(response_data)
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#     if request.method == "POST":
-#         try:
-#             data = request.get_json()
-#
-#             # Validation of Data:
-#             if "requestId" not in data or "cash_in_advance" not in data or "reason_cash_in_advance" not in data:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Required Fields are Empty"
-#                 }
-#
-#             request_id = data.get("requestId")
-#             cash_in_advance = data.get("cash_in_advance")
-#             reason_cash_in_advance = data.get("reason_cash_in_advance")
-#             request_policy = request.headers.get("requestPolicy")
-#
-#             # Validating the data from the Request Policy:
-#             policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
-#             policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
-#
-#             if policy_data is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Invalid Request Policy Found"
-#                 }
-#
-#             # Validating as per the Request Policy
-#             if policy_data[5] == 0:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "you are not eligible for this request",
-#                 }
-#
-#             # Query To Save Advance Cash Request in Travel Request Table
-#             query = f"UPDATE travelrequest SET cash_in_advance=?, reason_cash_in_advance=? WHERE request_id=?"
-#             cursor.execute(query, (cash_in_advance, reason_cash_in_advance, request_id))
-#             connection.commit()
-#
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Cash Advance Saved Successfully",
-#             })
-#
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
+# 6. Request Advance Cash on Travel
+@app.route('/request-advcash', methods=['GET', 'POST'])
+@jwt_required()
+def request_advcash():
+    # Validation for the Connection on DB/Server:
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")
+            request_type = request.headers.get("requestType")
+            request_policy = request.headers.get("requestPolicy")
+
+            if request_id is None or request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "(DEBUG) -> RequestId is Required or Invalid Request Type Found"
+                }
+
+            if request_type == "travel":  # From Travel Request Data
+                query = "SELECT cash_in_advance, reason_cash_in_advance FROM travelrequest WHERE request_id = ?"
+            else:  # From Expense Request Data
+                query = "SELECT cash_in_advance, reason_cash_in_advance FROM expenserequest WHERE request_id = ?"
+
+            cursor.execute(query, (request_id,))
+
+            # Fetch the data
+            cash_advance_data = cursor.fetchone()
+
+            # Check if data is found
+            if cash_advance_data:
+                cash_in_advance, reason_cash_in_advance = cash_advance_data
+            else:
+                cash_in_advance = None
+                reason_cash_in_advance = None
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            response_data = {
+                "amount": total_amount,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Cash Advance Data Fetched",
+                "data": {
+                    "cashInAdvance": cash_in_advance,
+                    "reasonCashInAdvance": reason_cash_in_advance
+                }
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+
+            # Validation of Data:
+            if "requestId" not in data or "cash_in_advance" not in data or "reason_cash_in_advance" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
+
+            request_id = data.get("requestId")
+            cash_in_advance = data.get("cash_in_advance")
+            reason_cash_in_advance = data.get("reason_cash_in_advance")
+            request_policy = request.headers.get("requestPolicy")
+
+            # Validating the data from the Request Policy:
+            policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
+            policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
+
+            if policy_data is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Policy Found"
+                }
+
+            # Validating as per the Request Policy
+            if policy_data[5] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for this request",
+                }
+
+            # Query To Save Advance Cash Request in Travel Request Table
+            query = f"UPDATE travelrequest SET cash_in_advance=?, reason_cash_in_advance=? WHERE request_id=?"
+            cursor.execute(query, (cash_in_advance, reason_cash_in_advance, request_id))
+            connection.commit()
+
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Cash Advance Saved Successfully",
+            })
+
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
 
-# # 7. Other Expense API
-# @app.route('/other-expense', methods=['GET', 'POST'])
-# @jwt_required()
-# def other_expense():
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get("requestId")
-#             request_type = request.headers.get("requestType")
-#             request_policy = request.headers.get("requestPolicy")
-#
-#             if request_type is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Invalid Request Type Found"
-#                 }
-#             if request_type == "travel":
-#                 query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
-#             else:
-#
-#                 query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
-#
-#             cursor.execute(query, (request_id,))
-#
-#             # Fetch the data
-#             other_expense_data = cursor.fetchone()
-#
-#             # Check if data is found
-#             if other_expense_data:
-#                 international_roaming, incident_expense = other_expense_data
-#             else:
-#                 international_roaming = None
-#                 incident_expense = None
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             if amount is None:
-#                 amount = 0
-#             else:
-#                 amount = amount[0]
-#
-#             total_amount = amount + perdiem_other_expense
-#             response_data = {
-#                 "amount": amount,
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Other Expense Data Fetched",
-#                 "data": {
-#                     "internationalRoaming": international_roaming,
-#                     "incidentExpense": incident_expense
-#                 }
-#             }
-#             return jsonify(response_data)
-#         except Exception as err:
-#             return {
-#                 "reason": str(err),
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "responseMessage": "Something Went Wrong!!"
-#             }
-#
-#     if request.method == "POST":
-#         try:
-#             data = request.get_json()
-#             if "requestId" not in data:
-#                 return jsonify({
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "(DEBUG) -> Request ID is required Field!!"
-#                 })
-#
-#             # Validation of the international expense and internation roaming as per the requestPolicy.
-#
-#             request_id = data.get("requestId")
-#             request_policy = request.headers.get("requestPolicy")
-#
-#             # Validating the data from the Request Policy:
-#             policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
-#             policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
-#
-#             if policy_data is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Invalid Request Policy Found"
-#                 }
-#
-#             # Validating as per the Request Policy for Incident Expense
-#             if data['incidentExpense'] == 1 and policy_data[7] == 0:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "you are not eligible for Incident Expense in Request",
-#                 }
-#
-#             # Validating as per the Request Policy for International Roaming
-#             if data["internationalRoaming"] == 1 and policy_data[6] == 0:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "you are not eligible for International Roaming in Request",
-#                 }
-#
-#             if "incidentExpense" in data or "internationalRoaming" in data:
-#                 international_roaming = data.get("internationalRoaming")
-#                 incident_expense = data.get("incidentExpense")
-#
-#                 query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
-#                 cursor.execute(query, (international_roaming, incident_expense, request_id))
-#                 connection.commit()
-#                 return jsonify({
-#                     "responseCode": http_status_codes.HTTP_200_OK,
-#                     "responseMessage": "Other Expense Saved Successfully"
-#                 })
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
+# 7. Other Expense API
+@app.route('/other-expense', methods=['GET', 'POST'])
+@jwt_required()
+def other_expense():
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")
+            request_type = request.headers.get("requestType")
+            request_policy = request.headers.get("requestPolicy")
+
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Type Found"
+                }
+            if request_type == "travel":
+                query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
+            else:
+
+                query = "SELECT international_roaming, incident_expense from travelrequest where request_id=?"
+
+            cursor.execute(query, (request_id,))
+
+            # Fetch the data
+            other_expense_data = cursor.fetchone()
+
+            # Check if data is found
+            if other_expense_data:
+                international_roaming, incident_expense = other_expense_data
+            else:
+                international_roaming = None
+                incident_expense = None
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            response_data = {
+                "amount": amount,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Other Expense Data Fetched",
+                "data": {
+                    "internationalRoaming": international_roaming,
+                    "incidentExpense": incident_expense
+                }
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return {
+                "reason": str(err),
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong!!"
+            }
+
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            if "requestId" not in data:
+                return jsonify({
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "(DEBUG) -> Request ID is required Field!!"
+                })
+
+            # Validation of the international expense and internation roaming as per the requestPolicy.
+
+            request_id = data.get("requestId")
+            request_policy = request.headers.get("requestPolicy")
+
+            # Validating the data from the Request Policy:
+            policy_query = "SELECT * FROM requestpolicy WHERE request_policy_name=?"
+            policy_data = cursor.execute(policy_query, (request_policy,)).fetchone()
+
+            if policy_data is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Policy Found"
+                }
+
+            # Validating as per the Request Policy for Incident Expense
+            if data['incidentExpense'] == 1 and policy_data[7] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for Incident Expense in Request",
+                }
+
+            # Validating as per the Request Policy for International Roaming
+            if data["internationalRoaming"] == 1 and policy_data[6] == 0:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "you are not eligible for International Roaming in Request",
+                }
+
+            if "incidentExpense" in data or "internationalRoaming" in data:
+                international_roaming = data.get("internationalRoaming")
+                incident_expense = data.get("incidentExpense")
+
+                query = f"UPDATE travelrequest SET international_roaming=?, incident_expense=? WHERE request_id=?"
+                cursor.execute(query, (international_roaming, incident_expense, request_id))
+                connection.commit()
+                return jsonify({
+                    "responseCode": http_status_codes.HTTP_200_OK,
+                    "responseMessage": "Other Expense Saved Successfully"
+                })
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
 
 # # 8. Clearing Data API

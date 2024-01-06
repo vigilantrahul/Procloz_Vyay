@@ -2358,128 +2358,127 @@ def expense_hotel():
             })
 
 
-# # 5. Request PerDiem on Travel
-# @jwt_required()
-# @app.route('/expense-perdiem', methods=['GET', 'POST'])
-# def expense_perdiem():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get("requestId")
-#             request_policy = request.headers.get("requestPolicy")
-#
-#             if request_id is None:
-#                 return {
-#                     "responseCode": 400,
-#                     "responseMessage": "(Debug) -> requestId is required Field"
-#                 }
-#
-#             query = "SELECT * from expenseperdiem WHERE request_id=?"
-#             request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
-#             per_diem_list = [
-#                 {
-#                     'date': diem.diem_date,  # 'date': diem.diem_date.strftime('%d/%m/%Y'),
-#                     "breakfast": diem.breakfast,
-#                     "lunch": diem.lunch,
-#                     "dinner": diem.dinner
-#                 }
-#                 for diem in request_perdiem_data
-#             ]
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#             print("perdiem_other_expense: ", perdiem_other_expense)
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             if amount is None:
-#                 amount = 0
-#             else:
-#                 amount = amount[0]
-#
-#             total_amount = perdiem_other_expense + amount
-#
-#             response_data = {
-#                 "amount": total_amount,
-#                 "data": per_diem_list,
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Hotel Request Successfully Fetched"
-#             }
-#             return jsonify(response_data)
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#     if request.method == "POST":
-#         try:
-#             data = request.get_json()
-#
-#             # Validation of Data:
-#             if "requestId" not in data or "diems" not in data:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Required Fields are Empty"
-#                 }
-#             request_id = data.get("requestId")
-#             diems = data.get("diems")
-#
-#             # Validating request_id in travel Request Table:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#             if result is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Request ID Not Exists!!"
-#                 }
-#
-#             for diem in diems:
-#                 diem['requestId'] = request_id
-#
-#             # Validating data from Expense Perdiem Table:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM expenseperdiem WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#             if result:
-#                 # Code to Delete the previous Data related to that request ID:
-#                 sql_query = "DELETE FROM expenseperdiem WHERE request_id = ?"
-#                 cursor.execute(sql_query, (request_id,))
-#                 connection.commit()
-#
-#             # Construct the SQL query for bulk insert
-#             values = ', '.join([
-#                 f"('{diem['date']}', '{diem['breakfast']}', '{diem['lunch']}', {diem['dinner']}, '{diem['requestId']}')"
-#                 for diem in diems
-#             ])
-#             query = f"INSERT INTO expenseperdiem (diem_date, breakfast, lunch, dinner, request_id) VALUES {values}"
-#
-#             # Execute the query
-#             cursor.execute(query)
-#             connection.commit()
-#
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Expense Perdiems Data Saved Successfully",
-#             })
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#
+# 5. Request PerDiem on Travel
+@jwt_required()
+@app.route('/expense-perdiem', methods=['GET', 'POST'])
+def expense_perdiem():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")
+            request_policy = request.headers.get("requestPolicy")
+
+            if request_id is None:
+                return {
+                    "responseCode": 400,
+                    "responseMessage": "(Debug) -> requestId is required Field"
+                }
+
+            query = "SELECT * from expenseperdiem WHERE request_id=?"
+            request_perdiem_data = cursor.execute(query, (request_id,)).fetchall()
+            per_diem_list = [
+                {
+                    'date': diem.diem_date,  # 'date': diem.diem_date.strftime('%d/%m/%Y'),
+                    "breakfast": diem.breakfast,
+                    "lunch": diem.lunch,
+                    "dinner": diem.dinner
+                }
+                for diem in request_perdiem_data
+            ]
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = perdiem_other_expense + amount
+
+            response_data = {
+                "amount": total_amount,
+                "data": per_diem_list,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Hotel Request Successfully Fetched"
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+
+            # Validation of Data:
+            if "requestId" not in data or "diems" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
+            request_id = data.get("requestId")
+            diems = data.get("diems")
+
+            # Validating request_id in travel Request Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            for diem in diems:
+                diem['requestId'] = request_id
+
+            # Validating data from Expense Perdiem Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM expenseperdiem WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result:
+                # Code to Delete the previous Data related to that request ID:
+                sql_query = "DELETE FROM expenseperdiem WHERE request_id = ?"
+                cursor.execute(sql_query, (request_id,))
+                connection.commit()
+
+            # Construct the SQL query for bulk insert
+            values = ', '.join([
+                f"('{diem['date']}', '{diem['breakfast']}', '{diem['lunch']}', {diem['dinner']}, '{diem['requestId']}')"
+                for diem in diems
+            ])
+            query = f"INSERT INTO expenseperdiem (diem_date, breakfast, lunch, dinner, request_id) VALUES {values}"
+
+            # Execute the query
+            cursor.execute(query)
+            connection.commit()
+
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Expense Perdiems Data Saved Successfully",
+            })
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+
 # # 6. Request Advance Cash on Travel
 # @app.route('/expense-advcash', methods=['GET', 'POST'])
 # @jwt_required()

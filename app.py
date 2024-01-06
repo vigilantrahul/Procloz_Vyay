@@ -2,10 +2,12 @@ import os
 import re
 import base64
 from io import BytesIO
+import pandas as pd
 import random
 import sys
 import time
-from datetime import timedelta, datetime, date
+from datetime import timedelta, date
+from datetime import datetime
 import datetime
 import uuid
 from azure.storage.blob import BlobServiceClient, ContainerClient
@@ -601,9 +603,9 @@ def request_initiate():
             request_policy = data.get('requestPolicy')
             purpose = data.get('purpose')
             start_date = data.get('startDate')
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            start_date = pd.to_datetime(start_date, format='%Y-%m-%d').date()
             end_date = data.get('endDate')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            end_date = pd.to_datetime(end_date, format='%Y-%m-%d').date()
             status = data.get('status')
 
             # Validating the Request_ID already exist or not:

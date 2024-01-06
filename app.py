@@ -603,7 +603,7 @@ def request_initiate():
             request_policy = data.get('requestPolicy')
             purpose = data.get('purpose')
             start_date = data.get('startDate')
-            start_date = pd.to_datetime(start_date, format='%Y-%m-%d').date()
+            start_date = pd.to_datetime(start_date, format='%Y-%m-%d').date() # New Code Change with PD
             end_date = data.get('endDate')
             end_date = pd.to_datetime(end_date, format='%Y-%m-%d').date()
             status = data.get('status')

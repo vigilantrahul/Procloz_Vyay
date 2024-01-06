@@ -15,8 +15,8 @@ import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session, Response
 from flask_cors import CORS
-# from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, \
-#     expense_carrental_data
+from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, \
+    expense_carrental_data
 from Pull_Request_Data import pull_request_data_api
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
@@ -2026,215 +2026,215 @@ def expense_update_cost_center():
             })
 
 
-# # 3. Request Hotel on Travel
-# @app.route('/expense-transport', methods=['GET', 'POST'])
-# # @jwt_required()
-# def expense_transport():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get("requestId")  # Request ID for getting data
-#             request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
-#
-#             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
-#             query = """
-#                 SELECT
-#                     expensetransport.transport_type,
-#                     expensetransport.trip_type,
-#                     expensetransporttripmapping.trip_from,
-#                     expensetransporttripmapping.trip_to,
-#                     expensetransporttripmapping.departure_date,
-#                     expensetransporttripmapping.estimated_cost,
-#                     expensetransporttripmapping.from_date,
-#                     expensetransporttripmapping.to_date,
-#                     expensetransporttripmapping.comment,
-#                     expensetransporttripmapping.establishment_name,
-#                     expensetransporttripmapping.bill_date,
-#                     expensetransporttripmapping.bill_number,
-#                     expensetransporttripmapping.bill_currency,
-#                     expensetransporttripmapping.bill_amount,
-#                     expensetransporttripmapping.exchange_rate,
-#                     expensetransporttripmapping.final_amount,
-#                     expensetransporttripmapping.expense_type,
-#                     expensetransporttripmapping.bill_file,
-#                     expensetransporttripmapping.bill_file_original_name
-#                 FROM expensetransport
-#                 LEFT JOIN expensetransporttripmapping ON expensetransport.id = expensetransporttripmapping.transport
-#                 WHERE expensetransport.request_id = ?
-#             """
-#             cursor.execute(query, (request_id,))
-#
-#             # Fetch results
-#             results = cursor.fetchall()
-#
-#             transport_data = []
-#             current_transport = None
-#
-#             # Inside the for loop where you process query results
-#             for row in results:
-#                 transport_type, trip_type, *trip_mapping_data = row
-#
-#                 # Check if it's a new transport entry
-#                 if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
-#                         current_transport['tripType']:
-#                     if current_transport:
-#                         transport_data.append(current_transport)
-#                     current_transport = {
-#                         'transportType': transport_type,
-#                         'tripType': trip_type,
-#                         'trips': []
-#                     }
-#                 if current_transport["transportType"] == "bus" or current_transport["transportType"] == "flight" or \
-#                         current_transport["transportType"] == "train":
-#                     # Add trip mapping data to the current transport entry
-#                     if trip_mapping_data:
-#                         trip_mapping = {
-#                             'from': trip_mapping_data[0],
-#                             'to': trip_mapping_data[1],
-#                             'departureDate': trip_mapping_data[2],
-#                             'estimateCost': trip_mapping_data[3],
-#                             'establishmentName': trip_mapping_data[7],
-#                             'billDate': trip_mapping_data[8],
-#                             'billNumber': trip_mapping_data[9],
-#                             'billCurrency': trip_mapping_data[10],
-#                             'billAmount': trip_mapping_data[11],
-#                             'exchangeRate': trip_mapping_data[12],
-#                             'finalAmount': trip_mapping_data[13],
-#                             'expenseType': trip_mapping_data[14],
-#                             'billFile': trip_mapping_data[15],
-#                             'billFileOriginalName': trip_mapping_data[16]
-#                         }
-#                         current_transport['trips'].append(trip_mapping)
-#
-#                 elif current_transport["transportType"] == "taxi":
-#                     if trip_mapping_data:
-#                         trip_mapping = {
-#                             'from': trip_mapping_data[0],
-#                             'to': trip_mapping_data[1],
-#                             'departureDate': trip_mapping_data[2],
-#                             'estimateCost': trip_mapping_data[3],
-#                             'establishmentName': trip_mapping_data[7],
-#                             'billDate': trip_mapping_data[8],
-#                             'billNumber': trip_mapping_data[9],
-#                             'billCurrency': trip_mapping_data[10],
-#                             'billAmount': trip_mapping_data[11],
-#                             'exchangeRate': trip_mapping_data[12],
-#                             'finalAmount': trip_mapping_data[13],
-#                             'expenseType': trip_mapping_data[14],
-#                             'billFile': trip_mapping_data[15],
-#                             'billFileOriginalName': trip_mapping_data[16]
-#                         }
-#                         current_transport['trips'].append(trip_mapping)
-#
-#                 elif current_transport["transportType"] == "carRental":
-#                     current_transport["estimateCost"] = trip_mapping_data[3]
-#                     current_transport["startDate"] = trip_mapping_data[4]
-#                     current_transport["endDate"] = trip_mapping_data[5]
-#                     current_transport["comment"] = trip_mapping_data[6]
-#                     current_transport["establishmentName"] = trip_mapping_data[7]
-#                     current_transport["billDate"] = trip_mapping_data[8]
-#                     current_transport["billNumber"] = trip_mapping_data[9]
-#                     current_transport["billCurrency"] = trip_mapping_data[10]
-#                     current_transport["billAmount"] = trip_mapping_data[11]
-#                     current_transport["exchangeRate"] = trip_mapping_data[12]
-#                     current_transport["finalAmount"] = trip_mapping_data[13]
-#                     current_transport["billFile"] = trip_mapping_data[14]
-#                     current_transport["billFileOriginalName"] = trip_mapping_data[15]
-#
-#                     del current_transport["tripType"]
-#                     del current_transport["trips"]
-#
-#             # Add the last transport entry to the list:
-#             if current_transport:
-#                 transport_data.append(current_transport)
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             amount = amount[0]
-#             total_amount = amount + perdiem_other_expense
-#
-#             return jsonify(
-#                 {
-#                     "amount": total_amount,
-#                     'data': transport_data,
-#                     'responseMessage': "Transport Data Fetch Successfully",
-#                     'responseCode': http_status_codes.HTTP_200_OK
-#                 }
-#             )
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#     if request.method == "POST":
-#         try:
-#             request_id = request.form.get('requestId', None)
-#             employee_id = request.form.get('employeeId', None)
-#             trip_way = request.form.get('tripWay', None)
-#             transport_type = request.args.get('transportType')
-#             objects = object_format(request)
-#
-#             # Validating the Request_ID already exist or not:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#
-#             if result is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Request ID Not Exists!!"
-#                 }
-#
-#             if transport_type == "flight":
-#                 result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects,
-#                                              container_client, employee_id)
-#                 return result
-#
-#             if transport_type == "train":
-#                 result = expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects,
-#                                             container_client, employee_id)
-#                 return result
-#
-#             if transport_type == "bus":
-#                 result = expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects,
-#                                           container_client, employee_id)
-#                 return result
-#
-#             if transport_type == "taxi":
-#                 result = expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, objects,
-#                                            container_client, employee_id)
-#                 return result
-#
-#             if transport_type == "carRental":
-#                 result = expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request,
-#                                                 container_client, employee_id)
-#                 return result
-#
-#             return {
-#                 "reason": "If main nahi gya bhai check kr jaldi",
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Success here all!!"
-#             }
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)  # Error Code comes here
-#             })
+# 3. Request Hotel on Travel
+@app.route('/expense-transport', methods=['GET', 'POST'])
+# @jwt_required()
+def expense_transport():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")  # Request ID for getting data
+            request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
+
+            # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
+            query = """
+                SELECT
+                    expensetransport.transport_type,
+                    expensetransport.trip_type,
+                    expensetransporttripmapping.trip_from,
+                    expensetransporttripmapping.trip_to,
+                    expensetransporttripmapping.departure_date,
+                    expensetransporttripmapping.estimated_cost,
+                    expensetransporttripmapping.from_date,
+                    expensetransporttripmapping.to_date,
+                    expensetransporttripmapping.comment,
+                    expensetransporttripmapping.establishment_name,
+                    expensetransporttripmapping.bill_date,
+                    expensetransporttripmapping.bill_number,
+                    expensetransporttripmapping.bill_currency,
+                    expensetransporttripmapping.bill_amount,
+                    expensetransporttripmapping.exchange_rate,
+                    expensetransporttripmapping.final_amount,
+                    expensetransporttripmapping.expense_type,
+                    expensetransporttripmapping.bill_file,
+                    expensetransporttripmapping.bill_file_original_name
+                FROM expensetransport
+                LEFT JOIN expensetransporttripmapping ON expensetransport.id = expensetransporttripmapping.transport
+                WHERE expensetransport.request_id = ?
+            """
+            cursor.execute(query, (request_id,))
+
+            # Fetch results
+            results = cursor.fetchall()
+
+            transport_data = []
+            current_transport = None
+
+            # Inside the for loop where you process query results
+            for row in results:
+                transport_type, trip_type, *trip_mapping_data = row
+
+                # Check if it's a new transport entry
+                if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
+                        current_transport['tripType']:
+                    if current_transport:
+                        transport_data.append(current_transport)
+                    current_transport = {
+                        'transportType': transport_type,
+                        'tripType': trip_type,
+                        'trips': []
+                    }
+                if current_transport["transportType"] == "bus" or current_transport["transportType"] == "flight" or \
+                        current_transport["transportType"] == "train":
+                    # Add trip mapping data to the current transport entry
+                    if trip_mapping_data:
+                        trip_mapping = {
+                            'from': trip_mapping_data[0],
+                            'to': trip_mapping_data[1],
+                            'departureDate': trip_mapping_data[2],
+                            'estimateCost': trip_mapping_data[3],
+                            'establishmentName': trip_mapping_data[7],
+                            'billDate': trip_mapping_data[8],
+                            'billNumber': trip_mapping_data[9],
+                            'billCurrency': trip_mapping_data[10],
+                            'billAmount': trip_mapping_data[11],
+                            'exchangeRate': trip_mapping_data[12],
+                            'finalAmount': trip_mapping_data[13],
+                            'expenseType': trip_mapping_data[14],
+                            'billFile': trip_mapping_data[15],
+                            'billFileOriginalName': trip_mapping_data[16]
+                        }
+                        current_transport['trips'].append(trip_mapping)
+
+                elif current_transport["transportType"] == "taxi":
+                    if trip_mapping_data:
+                        trip_mapping = {
+                            'from': trip_mapping_data[0],
+                            'to': trip_mapping_data[1],
+                            'departureDate': trip_mapping_data[2],
+                            'estimateCost': trip_mapping_data[3],
+                            'establishmentName': trip_mapping_data[7],
+                            'billDate': trip_mapping_data[8],
+                            'billNumber': trip_mapping_data[9],
+                            'billCurrency': trip_mapping_data[10],
+                            'billAmount': trip_mapping_data[11],
+                            'exchangeRate': trip_mapping_data[12],
+                            'finalAmount': trip_mapping_data[13],
+                            'expenseType': trip_mapping_data[14],
+                            'billFile': trip_mapping_data[15],
+                            'billFileOriginalName': trip_mapping_data[16]
+                        }
+                        current_transport['trips'].append(trip_mapping)
+
+                elif current_transport["transportType"] == "carRental":
+                    current_transport["estimateCost"] = trip_mapping_data[3]
+                    current_transport["startDate"] = trip_mapping_data[4]
+                    current_transport["endDate"] = trip_mapping_data[5]
+                    current_transport["comment"] = trip_mapping_data[6]
+                    current_transport["establishmentName"] = trip_mapping_data[7]
+                    current_transport["billDate"] = trip_mapping_data[8]
+                    current_transport["billNumber"] = trip_mapping_data[9]
+                    current_transport["billCurrency"] = trip_mapping_data[10]
+                    current_transport["billAmount"] = trip_mapping_data[11]
+                    current_transport["exchangeRate"] = trip_mapping_data[12]
+                    current_transport["finalAmount"] = trip_mapping_data[13]
+                    current_transport["billFile"] = trip_mapping_data[14]
+                    current_transport["billFileOriginalName"] = trip_mapping_data[15]
+
+                    del current_transport["tripType"]
+                    del current_transport["trips"]
+
+            # Add the last transport entry to the list:
+            if current_transport:
+                transport_data.append(current_transport)
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+            total_amount = amount + perdiem_other_expense
+
+            return jsonify(
+                {
+                    "amount": total_amount,
+                    'data': transport_data,
+                    'responseMessage': "Transport Data Fetch Successfully",
+                    'responseCode': http_status_codes.HTTP_200_OK
+                }
+            )
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        try:
+            request_id = request.form.get('requestId', None)
+            employee_id = request.form.get('employeeId', None)
+            trip_way = request.form.get('tripWay', None)
+            transport_type = request.args.get('transportType')
+            objects = object_format(request)
+
+            # Validating the Request_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            if transport_type == "flight":
+                result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                             container_client, employee_id)
+                return result
+
+            if transport_type == "train":
+                result = expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                            container_client, employee_id)
+                return result
+
+            if transport_type == "bus":
+                result = expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                          container_client, employee_id)
+                return result
+
+            if transport_type == "taxi":
+                result = expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                           container_client, employee_id)
+                return result
+
+            if transport_type == "carRental":
+                result = expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request,
+                                                container_client, employee_id)
+                return result
+
+            return {
+                "reason": "If main nahi gya bhai check kr jaldi",
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Success here all!!"
+            }
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)  # Error Code comes here
+            })
 
 
 # 4. Request Hotel on Travel

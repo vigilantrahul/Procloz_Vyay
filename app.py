@@ -1795,7 +1795,7 @@ def expense_initiate():
                     "amount": total_amount,
                     "responseCode": http_status_codes.HTTP_200_OK,
                     "responseData": response_data,
-                    'responseMessage': 'Travel Request Fetched Successfully'
+                    'responseMessage': 'Expense Request Fetched Successfully'
                 }
         except Exception as err:
             return jsonify({
@@ -1839,9 +1839,9 @@ def expense_initiate():
             request_policy = data.get('requestPolicy')
             purpose = data.get('purpose')
             start_date = data.get('startDate')
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            start_date = pd.to_datetime(start_date, format='%Y-%m-%d').date()
             end_date = data.get('endDate')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            start_date = pd.to_datetime(start_date, format='%Y-%m-%d').date()
             status = data.get('status')
 
             # Validating the Request_ID already exist or not:
@@ -1888,144 +1888,144 @@ def expense_initiate():
             })
 
 
-# # 2. updating Cost Center
-# @app.route('/expense-cost-center', methods=['GET', 'POST'])
-# @jwt_required()
-# def expense_update_cost_center():
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get('requestId')
-#             organization = request.headers.get('organization')
-#             employee = request.headers.get('employeeId')
-#             # request_type = request.headers.get('requestType')
-#             request_policy = request.headers.get('requestPolicy')
-#             # if request_type is None:
-#             #     return {
-#             #         "responseCode": http_status_codes.HTTP_200_OK,
-#             #         "responseMessage": "Invalid Request Type Found"
-#             #     }
-#
-#             if organization is None or employee is None:
-#                 return {
-#                     "responseCode": 400,
-#                     "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
-#                 }
-#
-#             try:
-#                 qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
-#                 user_data = cursor.execute(qry_1, employee).fetchall()
-#                 qry_2 = "SELECT cost_center FROM expenserequest WHERE request_id=?"
-#
-#                 cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
-#             except Exception as err_1:
-#                 return {
-#                     "error": str(err_1),
-#                     "responseCode": 500,
-#                     "responseMessage": "Error is Occurring"
-#                 }
-#
-#             task_list = [{'employee_id': user.employee_id,
-#                           'employee_first_name': user.employee_first_name,
-#                           'employee_middle_name': user.employee_middle_name,
-#                           'employee_last_name': user.employee_last_name,
-#                           'employee_business_title': user.employee_business_title,
-#                           'cost_center': user.costcenter,
-#                           'employee_country_name': user.employee_country_name,
-#                           'employee_currency_code': user.employee_currency_code,
-#                           'employee_currency_name': user.employee_currency_name,
-#                           'manager_id': user.manager_id,
-#                           'l1_manager_id': user.l1_manager_id,
-#                           'l2_manager_id': user.l2_manager_id,
-#                           'expense_administrator': user.expense_administrator,
-#                           'finance_contact_person': user.finance_contact_person,
-#                           'company_name': user.organization,
-#                           'business_unit': user.business_unit,
-#                           'department': user.department,
-#                           'function': user.func}
-#                          for user in user_data]
-#             if len(task_list) == 1:
-#                 task_list = task_list[0]
-#                 if cost_center is not None:
-#                     task_list["cost_center"] = cost_center[0]
-#             else:
-#                 task_list = None
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#             print("perdiem_other_expense: ", perdiem_other_expense)
-#
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             if amount is None:
-#                 amount = 0
-#             else:
-#                 amount = amount[0]
-#
-#             total_amount = amount + perdiem_other_expense
-#             return jsonify({
-#                 "amount": total_amount,
-#                 "responseCode": 200,
-#                 "responseMessage": "Success",
-#                 "data": task_list
-#             })
-#
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#     if request.method == "POST":
-#         data = request.get_json()
-#         # Validation for the Connection on DB/Server
-#         try:
-#             if "requestId" not in data or "costCenter" not in data:
-#                 return {
-#                     "responseCode": 400,
-#                     "responseMessage": "(DEBUG) - Need Request ID and Cost Center"
-#                 }
-#
-#             request_id = data.get('requestId')
-#             cost_center = data.get('costCenter')
-#
-#             # Validating request_id in travel Request Table:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#             if result is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Request ID Not Exists!!"
-#                 }
-#
-#             # Validating Cost Center in Travel Request Tables:
-#
-#             # Updating Cost Center in the request Table:
-#             query = f"UPDATE expenserequest SET cost_center=? WHERE request_id=?"
-#             cursor.execute(query, (cost_center, request_id))
-#             connection.commit()
-#             return jsonify({
-#                 "responseMessage": "Cost Center Saved",
-#                 "responseCode": http_status_codes.HTTP_200_OK
-#             })
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#
+# 2. updating Cost Center
+@app.route('/expense-cost-center', methods=['GET', 'POST'])
+@jwt_required()
+def expense_update_cost_center():
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get('requestId')
+            organization = request.headers.get('organization')
+            employee = request.headers.get('employeeId')
+            # request_type = request.headers.get('requestType')
+            request_policy = request.headers.get('requestPolicy')
+            # if request_type is None:
+            #     return {
+            #         "responseCode": http_status_codes.HTTP_200_OK,
+            #         "responseMessage": "Invalid Request Type Found"
+            #     }
+
+            if organization is None or employee is None:
+                return {
+                    "responseCode": 400,
+                    "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
+                }
+
+            try:
+                qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
+                user_data = cursor.execute(qry_1, employee).fetchall()
+                qry_2 = "SELECT cost_center FROM expenserequest WHERE request_id=?"
+
+                cost_center = cursor.execute(qry_2, (request_id,)).fetchone()
+            except Exception as err_1:
+                return {
+                    "error": str(err_1),
+                    "responseCode": 500,
+                    "responseMessage": "Error is Occurring"
+                }
+
+            task_list = [{'employee_id': user.employee_id,
+                          'employee_first_name': user.employee_first_name,
+                          'employee_middle_name': user.employee_middle_name,
+                          'employee_last_name': user.employee_last_name,
+                          'employee_business_title': user.employee_business_title,
+                          'cost_center': user.costcenter,
+                          'employee_country_name': user.employee_country_name,
+                          'employee_currency_code': user.employee_currency_code,
+                          'employee_currency_name': user.employee_currency_name,
+                          'manager_id': user.manager_id,
+                          'l1_manager_id': user.l1_manager_id,
+                          'l2_manager_id': user.l2_manager_id,
+                          'expense_administrator': user.expense_administrator,
+                          'finance_contact_person': user.finance_contact_person,
+                          'company_name': user.organization,
+                          'business_unit': user.business_unit,
+                          'department': user.department,
+                          'function': user.func}
+                         for user in user_data]
+            if len(task_list) == 1:
+                task_list = task_list[0]
+                if cost_center is not None:
+                    task_list["cost_center"] = cost_center[0]
+            else:
+                task_list = None
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            print("perdiem_other_expense: ", perdiem_other_expense)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            return jsonify({
+                "amount": total_amount,
+                "responseCode": 200,
+                "responseMessage": "Success",
+                "data": task_list
+            })
+
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        data = request.get_json()
+        # Validation for the Connection on DB/Server
+        try:
+            if "requestId" not in data or "costCenter" not in data:
+                return {
+                    "responseCode": 400,
+                    "responseMessage": "(DEBUG) - Need Request ID and Cost Center"
+                }
+
+            request_id = data.get('requestId')
+            cost_center = data.get('costCenter')
+
+            # Validating request_id in travel Request Table:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            # Validating Cost Center in Travel Request Tables:
+
+            # Updating Cost Center in the request Table:
+            query = f"UPDATE expenserequest SET cost_center=? WHERE request_id=?"
+            cursor.execute(query, (cost_center, request_id))
+            connection.commit()
+            return jsonify({
+                "responseMessage": "Cost Center Saved",
+                "responseCode": http_status_codes.HTTP_200_OK
+            })
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+
 # # 3. Request Hotel on Travel
 # @app.route('/expense-transport', methods=['GET', 'POST'])
 # # @jwt_required()

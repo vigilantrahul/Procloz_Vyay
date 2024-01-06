@@ -17,7 +17,7 @@ from flask import Flask, request, jsonify, session, Response
 from flask_cors import CORS
 # from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, \
 #     expense_carrental_data
-# from Pull_Request_Data import pull_request_data_api
+from Pull_Request_Data import pull_request_data_api
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
 from loguru import logger
@@ -2296,7 +2296,7 @@ def expense_hotel():
             objects = object_format(request)
 
             # Validating the Request ID in the Travel Request Table:
-            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            query = "SELECT TOP 1 1 AS exists_flag FROM expenserequest WHERE request_id = ?"
             cursor.execute(query, request_id)
             result = cursor.fetchone()
             if result is None:
@@ -2434,7 +2434,7 @@ def expense_perdiem():
             diems = data.get("diems")
 
             # Validating request_id in travel Request Table:
-            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            query = "SELECT TOP 1 1 AS exists_flag FROM expenserequest WHERE request_id = ?"
             cursor.execute(query, request_id)
             result = cursor.fetchone()
             if result is None:
@@ -4169,23 +4169,23 @@ def expense_perdiem():
 #
 #
 # # ------------------------------- Data Fetch API -------------------------------
-#
-# # Set Up Pull Request Data
-# @app.route('/pull-request-setup', methods=['POST'])
-# def pull_request_setup():
-#     try:
-#         data = request.get_json()
-#         request_id = data.get('requestId')
-#         employee_id = data.get('employeeId')
-#         data = pull_request_data_api(request_id, cursor, connection, employee_id)
-#         return data
-#     except Exception as err:
-#         return {
-#             "reason": str(err),
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong"
-#         }
-#
+
+# Set Up Pull Request Data
+@app.route('/pull-request-setup', methods=['POST'])
+def pull_request_setup():
+    try:
+        data = request.get_json()
+        request_id = data.get('requestId')
+        employee_id = data.get('employeeId')
+        data = pull_request_data_api(request_id, cursor, connection, employee_id)
+        return data
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
+        }
+
 
 # Get Organization
 @app.route('/get-organization', methods=['GET'])

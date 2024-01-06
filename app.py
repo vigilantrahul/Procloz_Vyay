@@ -24,8 +24,8 @@ from loguru import logger
 # from request_list import request_list, pull_request
 # from expense_request_list import expense_request_list
 from TotalAmountRequest import total_amount_request, total_perdiem_or_expense_amount
-# from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
-#     clear_perdiem_data, clear_transport_data
+from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
+    clear_perdiem_data, clear_transport_data
 # from OCR_Code import get_ocr_data
 
 app = Flask(__name__)
@@ -776,190 +776,190 @@ def update_cost_center():
             })
 
 
-# # 3. Request Transportation on Travel
-# @app.route('/request-transport', methods=['GET', 'POST'])
-# @jwt_required()
-# def request_transportation():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get("requestId")  # Request ID for getting data
-#             request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
-#
-#             # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
-#             query = """
-#                 SELECT
-#                     transport.transport_type,
-#                     transport.trip_type,
-#                     transporttripmapping.trip_from,
-#                     transporttripmapping.trip_to,
-#                     transporttripmapping.departure_date,
-#                     transporttripmapping.estimated_cost,
-#                     transporttripmapping.from_date,
-#                     transporttripmapping.to_date,
-#                     transporttripmapping.comment
-#                 FROM transport
-#                 LEFT JOIN transporttripmapping ON transport.id = transporttripmapping.transport
-#                 WHERE transport.request_id = ?
-#             """
-#
-#             cursor.execute(query, (request_id,))
-#
-#             # Fetch results
-#             results = cursor.fetchall()
-#             transport_data = []
-#             current_transport = None
-#
-#             # Inside the for loop where you process query results
-#             for row in results:
-#                 transport_type, trip_type, *trip_mapping_data = row
-#
-#                 # Check if it's a new transport entry
-#                 if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
-#                         current_transport['tripType']:
-#
-#                     if current_transport:
-#                         transport_data.append(current_transport)
-#                     current_transport = {
-#                         'transportType': transport_type,
-#                         'tripType': trip_type,
-#                         'trips': []
-#                     }
-#
-#                 if current_transport["transportType"] == "bus" or current_transport["transportType"] == "flight" or \
-#                         current_transport["transportType"] == "train":
-#                     # Add trip mapping data to the current transport entry
-#                     if trip_mapping_data:
-#                         trip_mapping = {
-#                             'from': trip_mapping_data[0],
-#                             'to': trip_mapping_data[1],
-#                             'departureDate': trip_mapping_data[2],
-#                             'estimateCost': trip_mapping_data[3]
-#                         }
-#                         current_transport['trips'].append(trip_mapping)
-#
-#                 elif current_transport["transportType"] == "taxi":
-#                     current_transport["estimateCost"] = trip_mapping_data[3]
-#                     current_transport["comment"] = trip_mapping_data[6]
-#                     del current_transport["tripType"]
-#                     del current_transport["trips"]
-#
-#                 elif current_transport["transportType"] == "carRental":
-#                     current_transport["estimateCost"] = trip_mapping_data[3]
-#                     current_transport["startDate"] = trip_mapping_data[4]
-#                     current_transport["endDate"] = trip_mapping_data[5]
-#                     current_transport["comment"] = trip_mapping_data[6]
-#                     del current_transport["tripType"]
-#                     del current_transport["trips"]
-#
-#             # Add the last transport entry to the list:
-#             if current_transport:
-#                 transport_data.append(current_transport)
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             amount = amount[0]
-#
-#             total_amount = amount + perdiem_other_expense
-#             return jsonify(
-#                 {
-#                     "amount": total_amount,
-#                     'data': transport_data,
-#                     'responseMessage': "Transport Data Fetch Successfully",
-#                     'responseCode': http_status_codes.HTTP_200_OK
-#                 }
-#             )
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#     if request.method == "POST":
-#         try:
-#             data = request.get_json()
-#             transport_type = request.args.get('transportType')
-#
-#             # Validation of None Value
-#             if transport_type is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Choose Valid Transport Type"
-#                 }
-#
-#             # Validation of Data:
-#             if "requestId" not in data or "employeeId" not in data:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Required Fields are Empty"
-#                 }
-#
-#             request_Id = data.get('requestId')
-#             transports = data.get('transports')
-#             employee_id = data.get('employeeId')
-#
-#             # Validating the Request_ID already exist or not:
-#             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-#             cursor.execute(query, request_Id)
-#             result = cursor.fetchone()
-#
-#             if result is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Request ID Not Exists!!"
-#                 }
-#
-#             if transport_type == "flight":
-#                 if transports is None:
-#                     return {
-#                         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                         "responseMessage": "Required Fields are Empty"
-#                     }
-#                 result = flight_data(cursor, connection, request_Id, transports, employee_id)
-#                 return result
-#             elif transport_type == "train":
-#                 if transports is None:
-#                     return {
-#                         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                         "responseMessage": "Required Fields are Empty"
-#                     }
-#                 result = train_data(cursor, connection, request_Id, transports, employee_id)
-#                 return result
-#             elif transport_type == "bus":
-#                 if transports is None:
-#                     return {
-#                         "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                         "responseMessage": "Required Fields are Empty"
-#                     }
-#                 result = bus_data(cursor, connection, request_Id, transports, employee_id)
-#                 return result
-#             elif transport_type == "taxi":
-#
-#                 result = taxi_data(cursor, connection, data)
-#                 return result
-#             elif transport_type == "carRental":
-#                 result = carrental_data(cursor, connection, data)
-#                 return result
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)  # Error Code comes here
-#             })
+# 3. Request Transportation on Travel
+@app.route('/request-transport', methods=['GET', 'POST'])
+@jwt_required()
+def request_transportation():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get("requestId")  # Request ID for getting data
+            request_policy = request.headers.get("requestPolicy")  # Request Policy for getting data
+
+            # Execute raw SQL query to fetch data from transport and its related data from transporttripmapping
+            query = """
+                SELECT
+                    transport.transport_type,
+                    transport.trip_type,
+                    transporttripmapping.trip_from,
+                    transporttripmapping.trip_to,
+                    transporttripmapping.departure_date,
+                    transporttripmapping.estimated_cost,
+                    transporttripmapping.from_date,
+                    transporttripmapping.to_date,
+                    transporttripmapping.comment
+                FROM transport
+                LEFT JOIN transporttripmapping ON transport.id = transporttripmapping.transport
+                WHERE transport.request_id = ?
+            """
+
+            cursor.execute(query, (request_id,))
+
+            # Fetch results
+            results = cursor.fetchall()
+            transport_data = []
+            current_transport = None
+
+            # Inside the for loop where you process query results
+            for row in results:
+                transport_type, trip_type, *trip_mapping_data = row
+
+                # Check if it's a new transport entry
+                if not current_transport or transport_type != current_transport['transportType'] or trip_type != \
+                        current_transport['tripType']:
+
+                    if current_transport:
+                        transport_data.append(current_transport)
+                    current_transport = {
+                        'transportType': transport_type,
+                        'tripType': trip_type,
+                        'trips': []
+                    }
+
+                if current_transport["transportType"] == "bus" or current_transport["transportType"] == "flight" or \
+                        current_transport["transportType"] == "train":
+                    # Add trip mapping data to the current transport entry
+                    if trip_mapping_data:
+                        trip_mapping = {
+                            'from': trip_mapping_data[0],
+                            'to': trip_mapping_data[1],
+                            'departureDate': trip_mapping_data[2],
+                            'estimateCost': trip_mapping_data[3]
+                        }
+                        current_transport['trips'].append(trip_mapping)
+
+                elif current_transport["transportType"] == "taxi":
+                    current_transport["estimateCost"] = trip_mapping_data[3]
+                    current_transport["comment"] = trip_mapping_data[6]
+                    del current_transport["tripType"]
+                    del current_transport["trips"]
+
+                elif current_transport["transportType"] == "carRental":
+                    current_transport["estimateCost"] = trip_mapping_data[3]
+                    current_transport["startDate"] = trip_mapping_data[4]
+                    current_transport["endDate"] = trip_mapping_data[5]
+                    current_transport["comment"] = trip_mapping_data[6]
+                    del current_transport["tripType"]
+                    del current_transport["trips"]
+
+            # Add the last transport entry to the list:
+            if current_transport:
+                transport_data.append(current_transport)
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            return jsonify(
+                {
+                    "amount": total_amount,
+                    'data': transport_data,
+                    'responseMessage': "Transport Data Fetch Successfully",
+                    'responseCode': http_status_codes.HTTP_200_OK
+                }
+            )
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            transport_type = request.args.get('transportType')
+
+            # Validation of None Value
+            if transport_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Choose Valid Transport Type"
+                }
+
+            # Validation of Data:
+            if "requestId" not in data or "employeeId" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
+
+            request_Id = data.get('requestId')
+            transports = data.get('transports')
+            employee_id = data.get('employeeId')
+
+            # Validating the Request_ID already exist or not:
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_Id)
+            result = cursor.fetchone()
+
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            if transport_type == "flight":
+                if transports is None:
+                    return {
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                        "responseMessage": "Required Fields are Empty"
+                    }
+                result = flight_data(cursor, connection, request_Id, transports, employee_id)
+                return result
+            elif transport_type == "train":
+                if transports is None:
+                    return {
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                        "responseMessage": "Required Fields are Empty"
+                    }
+                result = train_data(cursor, connection, request_Id, transports, employee_id)
+                return result
+            elif transport_type == "bus":
+                if transports is None:
+                    return {
+                        "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                        "responseMessage": "Required Fields are Empty"
+                    }
+                result = bus_data(cursor, connection, request_Id, transports, employee_id)
+                return result
+            elif transport_type == "taxi":
+
+                result = taxi_data(cursor, connection, data)
+                return result
+            elif transport_type == "carRental":
+                result = carrental_data(cursor, connection, data)
+                return result
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)  # Error Code comes here
+            })
 
 
 # # 4. Request Hotel on Travel

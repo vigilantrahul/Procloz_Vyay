@@ -287,194 +287,207 @@ def forgot_password():
         }
         # Return the custom error response with a 500 status code
         return jsonify(custom_error_response)
+    try:
+        data = request.get_json()
+        email = data.get('email', '')
 
-    data = request.get_json()
-    email = data.get('email', '')
+        if email == '':
+            return jsonify(error='Email found Blank')
 
-    if email == '':
-        return jsonify(error='Email found Blank')
+        # Check if the email exists in the database
+        query = "SELECT * FROM userproc05092023_1 WHERE email_id=?"
+        cursor.execute(query, email)
+        user = cursor.fetchone()
 
-    # Check if the email exists in the database
-    query = "SELECT * FROM userproc05092023_1 WHERE email_id=?"
-    cursor.execute(query, email)
-    user = cursor.fetchone()
+        response_data = {}
+        if user:
+            # Generate a new OTP
+            otp = generate_otp()
 
-    response_data = {}
-    if user:
-        # Generate a new OTP
-        otp = generate_otp()
+            # Timing When OTP got Created
+            current_time = time.time()
 
-        # Timing When OTP got Created
-        current_time = time.time()
+            # Store the OTP in the database
+            query = "UPDATE userproc05092023_1 SET otp=?, otp_created_at=? WHERE email_id=?"
+            cursor.execute(query, (otp, current_time, email))
+            connection.commit()
+            sender_email = "noreply@vyay.tech"
 
-        # Store the OTP in the database
-        query = "UPDATE userproc05092023_1 SET otp=?, otp_created_at=? WHERE email_id=?"
-        cursor.execute(query, (otp, current_time, email))
-        connection.commit()
-        sender_email = "noreply@vyay.tech"
+            # Send the OTP to the user's email
+            msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
+            msg.body = f'Your OTP is: {otp}'
+            mail.send(msg)
+            response_data["responseMessage"] = 'OTP sent to your email'
+            response_data["responseCode"] = http_status_codes.HTTP_200_OK
 
-        # Send the OTP to the user's email
-        msg = Message('OTP for Password Reset', sender=sender_email, recipients=[email])
-        msg.body = f'Your OTP is: {otp}'
-        mail.send(msg)
-        response_data["responseMessage"] = 'OTP sent to your email'
-        response_data["responseCode"] = http_status_codes.HTTP_200_OK
+            return jsonify(response_data)
+        else:
+            response_data["responseMessage"] = 'Invalid Email Found'
+            response_data["responseCode"] = http_status_codes.HTTP_404_NOT_FOUND
 
-        return jsonify(response_data)
-    else:
-        response_data["responseMessage"] = 'Invalid Email Found'
-        response_data["responseCode"] = http_status_codes.HTTP_404_NOT_FOUND
-
-        return jsonify(response_data)
+            return jsonify(response_data)
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong!"
+        }
 
 
 # Database logic for verifying OTP and updating password
 @app.route('/otp-verify', methods=['POST'])
 def verify_otp_code():
+    try:
+        data = request.json
+        req_otp = data.get('otp', '')
+        email = data.get('email', '')
+        req_otp = int(req_otp)
+
+        query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
+        cursor.execute(query, email)
+        result = cursor.fetchone()
+
+        if result is None:
+            return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
+
+        otp, otp_created_at = result
+        current_time = int(time.time())
+        remaining_time = (current_time - otp_created_at)
+
+        if otp != req_otp or remaining_time >= 300:  # Checking here for Right OTP and Under the valid Timing
+            return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid OTP Found"}
+        else:
+            return {"responseCode": http_status_codes.HTTP_200_OK, "responseMessage": "OTP Verified"}
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong."
+        }
+
+
+# RESET PASSWORD
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
     data = request.json
-    req_otp = data.get('otp', '')
+    # required Fields Validation
+    if len(data) == 0:
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Required Fields are Empty"
+        }
+
     email = data.get('email', '')
-    req_otp = int(req_otp)
+    new_password = data.get('new_password', '')
+    sender_email = "noreply@vyay.tech"
 
-    query = "SELECT otp, otp_created_at FROM userproc05092023_1 WHERE email_id=?"
-    cursor.execute(query, email)
-    result = cursor.fetchone()
+    if email == '' or new_password == '':
+        return {
+            "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+            "responseMessage": "Required Fields are Empty"
+        }
 
-    if result is None:
-        return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid Email Found"}
+    # Store the OTP in the database (assuming you have an 'otp' column)
+    query = f"UPDATE userproc05092023_1 SET password=?, otp=NULL, otp_created_at=NULL WHERE email_id=?"
+    cursor.execute(query, (new_password, email))
+    connection.commit()
 
-    otp, otp_created_at = result
-    current_time = int(time.time())
-    remaining_time = (current_time - otp_created_at)
-
-    if otp != req_otp or remaining_time >= 300:  # Checking here for Right OTP and Under the valid Timing
-        return {"responseCode": http_status_codes.HTTP_401_UNAUTHORIZED, "responseMessage": "Invalid OTP Found"}
-    else:
-        return {"responseCode": http_status_codes.HTTP_200_OK, "responseMessage": "OTP Verified"}
-
-
-# # RESET PASSWORD
-# @app.route('/reset-password', methods=['POST'])
-# def reset_password():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     data = request.json
-#     # required Fields Validation
-#     if len(data) == 0:
-#         return {
-#             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#             "responseMessage": "Required Fields are Empty"
-#         }
-#
-#     email = data.get('email', '')
-#     new_password = data.get('new_password', '')
-#     sender_email = "noreply@vyay.tech"
-#
-#     if email == '' or new_password == '':
-#         return {
-#             "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#             "responseMessage": "Required Fields are Empty"
-#         }
-#
-#     # Store the OTP in the database (assuming you have an 'otp' column)
-#     query = f"UPDATE userproc05092023_1 SET password=?, otp=NULL, otp_created_at=NULL WHERE email_id=?"
-#     cursor.execute(query, (new_password, email))
-#     connection.commit()
-#
-#     # Sending Email for Password Update Successfully
-#     msg = Message('Password Reset Confirmation', sender=sender_email, recipients=[email])
-#     msg.body = 'Your password has been successfully reset.'
-#     mail.send(msg)
-#     response_data = {
-#         "responseCode": http_status_codes.HTTP_200_OK,
-#         "responseMessage": "Password Reset Successfully"
-#     }
-#     return jsonify(response_data)
+    # Sending Email for Password Update Successfully
+    msg = Message('Password Reset Confirmation', sender=sender_email, recipients=[email])
+    msg.body = 'Your password has been successfully reset.'
+    mail.send(msg)
+    response_data = {
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Password Reset Successfully"
+    }
+    return jsonify(response_data)
 
 
-# # PASSWORD CHANGE
-# @app.route('/change-password', methods=['POST'])
-# @jwt_required()
-# def change_password():
-#     try:
-#         # Validation for the Connection on DB/Server
-#         if not connection:
-#             custom_error_response = {
-#                 "responseMessage": "Database Connection Error",
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "reason": "Failed to connect to the database. Please try again later."
-#             }
-#             # Return the custom error response with a 500 status code
-#             return jsonify(custom_error_response)
-#
-#         data = request.get_json()
-#         # required Fields Validation
-#         if len(data) == 0:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Required Fields are Empty"
-#             }
-#
-#         req_old_password = data.get('oldPassword', '')
-#         new_password = data.get('newPassword', '')
-#
-#         # Validating the Required Fields
-#         if req_old_password == '' or new_password == '':
-#             return {
-#                 "responseCode": 500,
-#                 "responseMessage": "Required Field is Empty"
-#             }
-#
-#         email = data.get("emailId")
-#         query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
-#         cursor.execute(query, email)
-#         result = cursor.fetchone()
-#
-#         if result is None:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Check the Email ID it's Invalid !!!"
-#             }
-#
-#         old_password, is_new = result
-#
-#         # Validation of the Old Password
-#         if old_password.casefold() != req_old_password.casefold():
-#             return jsonify({
-#                 "responseMessage": "Invalid old Password Found",
-#                 "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
-#             })
-#
-#         # To Check is the User New or Old
-#         if is_new == 1:
-#             # Update Password
-#             query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
-#         else:
-#             # Update Password
-#             query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
-#         cursor.execute(query, (new_password, email))
-#         connection.commit()
-#
-#         response_data = {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "responseMessage": "Password Changed Successfully"
-#         }
-#         return jsonify(response_data)
-#
-#     except Exception as e:
-#         return {
-#             "responseCode": 500,
-#             "responseMessage": "Something Went Wrong",
-#             "error": str(e)
-#         }
+# PASSWORD CHANGE
+@app.route('/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    try:
+        # Validation for the Connection on DB/Server
+        if not connection:
+            custom_error_response = {
+                "responseMessage": "Database Connection Error",
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "reason": "Failed to connect to the database. Please try again later."
+            }
+            # Return the custom error response with a 500 status code
+            return jsonify(custom_error_response)
+
+        data = request.get_json()
+        # required Fields Validation
+        if len(data) == 0:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Required Fields are Empty"
+            }
+
+        req_old_password = data.get('oldPassword', '')
+        new_password = data.get('newPassword', '')
+
+        # Validating the Required Fields
+        if req_old_password == '' or new_password == '':
+            return {
+                "responseCode": 500,
+                "responseMessage": "Required Field is Empty"
+            }
+
+        email = data.get("emailId")
+        query = 'SELECT password, is_new from userproc05092023_1 WHERE email_id=?'
+        cursor.execute(query, email)
+        result = cursor.fetchone()
+
+        if result is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Check the Email ID it's Invalid !!!"
+            }
+
+        old_password, is_new = result
+
+        # Validation of the Old Password
+        if old_password.casefold() != req_old_password.casefold():
+            return jsonify({
+                "responseMessage": "Invalid old Password Found",
+                "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED
+            })
+
+        # To Check is the User New or Old
+        if is_new == 1:
+            # Update Password
+            query = f"UPDATE userproc05092023_1 SET password=?, is_new=0 WHERE email_id=?"
+        else:
+            # Update Password
+            query = f"UPDATE userproc05092023_1 SET password=? WHERE email_id=?"
+        cursor.execute(query, (new_password, email))
+        connection.commit()
+
+        response_data = {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Password Changed Successfully"
+        }
+        return jsonify(response_data)
+
+    except Exception as e:
+        return {
+            "responseCode": 500,
+            "responseMessage": "Something Went Wrong",
+            "error": str(e)
+        }
 
 
 # # ------------------------------- Request Initiating API -------------------------------

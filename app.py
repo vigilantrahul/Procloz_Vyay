@@ -207,67 +207,67 @@ def login():
         })
 
 
-# # REFRESH API
-# @app.route('/refresh', methods=['POST'])
-# @jwt_required(refresh=True)
-# def refresh():
-#     # existing_refresh_token = session.get('refreshToken')
-#
-#     # # Session Validation
-#     # if existing_refresh_token is None:
-#     #     response_data = {
-#     #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-#     #         "responseMessage": "Session Expired"
-#     #     }
-#     #     return jsonify(response_data)
-#
-#     # # Get the Authorization header from the request
-#     # auth_header = request.headers.get('Authorization')
-#     # if auth_header is None:
-#     #     response_data = {
-#     #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-#     #         "responseMessage": "Invalid Token Found"
-#     #     }
-#     #     return jsonify(response_data)
-#     #
-#     # # Taking Token from the Auth Header
-#     # auth_token = auth_header.split(" ")
-#     # if len(auth_token) != 2:
-#     #     response_data = {
-#     #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-#     #         "responseMessage": "Invalid Token Found"
-#     #     }
-#     #     return jsonify(response_data)
-#     #
-#     # auth_token = auth_token[1]
-#
-#     # # Validation of the Valid Refresh Token
-#     # if auth_token != existing_refresh_token:
-#     #     response_data = {
-#     #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
-#     #         "responseMessage": "Invalid Token Found"
-#     #     }
-#     #     return jsonify(response_data)
-#
-#     # Taking Identity From the Refresh Token
-#     current_user = get_jwt_identity()
-#
-#     # Create a new access token
-#     new_access_token = create_access_token(identity=current_user)
-#     new_refresh_token = create_refresh_token(identity=current_user)
-#     session['access_Token'] = new_access_token
-#     session['refreshToken'] = new_refresh_token
-#
-#     # Return the new access token to the client
-#     response_data = {
-#         "responseCode": http_status_codes.HTTP_200_OK,
-#         "responseMessage": "Success",
-#         "data": {
-#             "accessToken": new_access_token,
-#             "refreshToken": new_refresh_token
-#         }
-#     }
-#     return jsonify(response_data)
+# REFRESH API
+@app.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    # existing_refresh_token = session.get('refreshToken')
+
+    # # Session Validation
+    # if existing_refresh_token is None:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Session Expired"
+    #     }
+    #     return jsonify(response_data)
+
+    # # Get the Authorization header from the request
+    # auth_header = request.headers.get('Authorization')
+    # if auth_header is None:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Invalid Token Found"
+    #     }
+    #     return jsonify(response_data)
+    #
+    # # Taking Token from the Auth Header
+    # auth_token = auth_header.split(" ")
+    # if len(auth_token) != 2:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Invalid Token Found"
+    #     }
+    #     return jsonify(response_data)
+    #
+    # auth_token = auth_token[1]
+
+    # # Validation of the Valid Refresh Token
+    # if auth_token != existing_refresh_token:
+    #     response_data = {
+    #         "responseCode": http_status_codes.HTTP_401_UNAUTHORIZED,
+    #         "responseMessage": "Invalid Token Found"
+    #     }
+    #     return jsonify(response_data)
+
+    # Taking Identity From the Refresh Token
+    current_user = get_jwt_identity()
+
+    # Create a new access token
+    new_access_token = create_access_token(identity=current_user)
+    new_refresh_token = create_refresh_token(identity=current_user)
+    session['access_Token'] = new_access_token
+    session['refreshToken'] = new_refresh_token
+
+    # Return the new access token to the client
+    response_data = {
+        "responseCode": http_status_codes.HTTP_200_OK,
+        "responseMessage": "Success",
+        "data": {
+            "accessToken": new_access_token,
+            "refreshToken": new_refresh_token
+        }
+    }
+    return jsonify(response_data)
 
 
 # # Generate a 4-digit OTP

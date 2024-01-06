@@ -962,135 +962,135 @@ def request_transportation():
             })
 
 
-# # 4. Request Hotel on Travel
-# @app.route('/request-hotel', methods=['GET', 'POST'])
-# @jwt_required()
-# def request_hotel():
-#     # Validation for the Connection on DB/Server
-#     if not connection:
-#         custom_error_response = {
-#             "responseMessage": "Database Connection Error",
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "reason": "Failed to connect to the database. Please try again later."
-#         }
-#         # Return the custom error response with a 500 status code
-#         return jsonify(custom_error_response)
-#
-#     if request.method == "GET":
-#         try:
-#             request_id = request.headers.get('requestId')
-#             request_type = request.headers.get('requestType')
-#             request_policy = request.headers.get('requestPolicy')
-#
-#             if request_type is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Invalid Request Type Found"
-#                 }
-#
-#             if request_type == "travel":
-#                 query = "SELECT * from hotel WHERE request_id=?"
-#             else:
-#                 query = """
-#                     SELECT
-#                         H.*,
-#                         EH.bill_date,
-#                         EH.bill_number,
-#                         EH.bill_amount,
-#                         EH.bill_currency
-#                     FROM hotel H
-#                     LEFT JOIN expensehotel EH ON H.request_id = EH.request_id
-#                     where H.request_id=?;
-#                 """
-#
-#             request_hotel_data = cursor.execute(query, request_id).fetchall()
-#             hotel_list = [{'requestId': hotel.request_id, 'cityName': hotel.city_name,
-#                            "startDate": hotel.check_in, "endDate": hotel.check_out,
-#                            "estimatedCost": hotel.estimated_cost} for hotel in
-#                           request_hotel_data]
-#
-#             # Fetching the Total of the perdiem Amount:
-#             perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#
-#             # Fetching the Total of the Request:
-#             amount = total_amount_request(cursor, request_id)
-#             if amount is None:
-#                 amount = 0
-#             else:
-#                 amount = amount[0]
-#
-#             total_amount = amount + perdiem_other_expense
-#             response_data = {
-#                 "amount": total_amount,
-#                 "data": hotel_list,
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Hotel Request Successfully Fetched"
-#             }
-#             return jsonify(response_data)
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
-#
-#     if request.method == "POST":
-#         try:
-#             data = request.get_json()
-#             # Validation of Data:
-#             if "requestId" not in data or "hotels" not in data:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Required Fields are Empty"
-#                 }
-#
-#             # Validating request_id in travel Request Table:
-#             request_id = data.get("requestId")
-#             hotels = data.get("hotels")
-#             query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
-#             cursor.execute(query, request_id)
-#             result = cursor.fetchone()
-#             if result is None:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Request ID Not Exists!!"
-#                 }
-#
-#             if len(hotels) < 0 or len(hotels) > 5:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
-#                 }
-#
-#             for hotel in hotels:
-#                 hotel['requestId'] = request_id
-#
-#             # Code to Delete the previous Data related to that request ID:
-#             sql_query = "DELETE FROM hotel WHERE request_id = ?"
-#             cursor.execute(sql_query, (request_id,))
-#             connection.commit()
-#
-#             # Construct the SQL query for bulk insert
-#             values = ', '.join([
-#                 f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['requestId']}')"
-#                 for hotel in hotels
-#             ])
-#             query = f"INSERT INTO hotel (city_name, check_in, check_out, estimated_cost, request_id) VALUES {values}"
-#
-#             # Execute the query
-#             cursor.execute(query)
-#             connection.commit()
-#
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Hotels Saved Successfully",
-#             })
-#         except Exception as err:
-#             return jsonify({
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "Something Went Wrong",
-#                 "reason": str(err)
-#             })
+# 4. Request Hotel on Travel
+@app.route('/request-hotel', methods=['GET', 'POST'])
+@jwt_required()
+def request_hotel():
+    # Validation for the Connection on DB/Server
+    if not connection:
+        custom_error_response = {
+            "responseMessage": "Database Connection Error",
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "reason": "Failed to connect to the database. Please try again later."
+        }
+        # Return the custom error response with a 500 status code
+        return jsonify(custom_error_response)
+
+    if request.method == "GET":
+        try:
+            request_id = request.headers.get('requestId')
+            request_type = request.headers.get('requestType')
+            request_policy = request.headers.get('requestPolicy')
+
+            if request_type is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Invalid Request Type Found"
+                }
+
+            if request_type == "travel":
+                query = "SELECT * from hotel WHERE request_id=?"
+            else:
+                query = """
+                    SELECT
+                        H.*,
+                        EH.bill_date,
+                        EH.bill_number,
+                        EH.bill_amount,
+                        EH.bill_currency
+                    FROM hotel H
+                    LEFT JOIN expensehotel EH ON H.request_id = EH.request_id
+                    where H.request_id=?;
+                """
+
+            request_hotel_data = cursor.execute(query, request_id).fetchall()
+            hotel_list = [{'requestId': hotel.request_id, 'cityName': hotel.city_name,
+                           "startDate": hotel.check_in, "endDate": hotel.check_out,
+                           "estimatedCost": hotel.estimated_cost} for hotel in
+                          request_hotel_data]
+
+            # Fetching the Total of the perdiem Amount:
+            perdiem_other_expense = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+
+            # Fetching the Total of the Request:
+            amount = total_amount_request(cursor, request_id)
+            if amount is None:
+                amount = 0
+            else:
+                amount = amount[0]
+
+            total_amount = amount + perdiem_other_expense
+            response_data = {
+                "amount": total_amount,
+                "data": hotel_list,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Hotel Request Successfully Fetched"
+            }
+            return jsonify(response_data)
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
+
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            # Validation of Data:
+            if "requestId" not in data or "hotels" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Required Fields are Empty"
+                }
+
+            # Validating request_id in travel Request Table:
+            request_id = data.get("requestId")
+            hotels = data.get("hotels")
+            query = "SELECT TOP 1 1 AS exists_flag FROM travelrequest WHERE request_id = ?"
+            cursor.execute(query, request_id)
+            result = cursor.fetchone()
+            if result is None:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Request ID Not Exists!!"
+                }
+
+            if len(hotels) < 0 or len(hotels) > 5:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "List of Hotels can be Min. 1 or Max. 5"
+                }
+
+            for hotel in hotels:
+                hotel['requestId'] = request_id
+
+            # Code to Delete the previous Data related to that request ID:
+            sql_query = "DELETE FROM hotel WHERE request_id = ?"
+            cursor.execute(sql_query, (request_id,))
+            connection.commit()
+
+            # Construct the SQL query for bulk insert
+            values = ', '.join([
+                f"('{hotel['cityName']}', '{hotel['startDate']}', '{hotel['endDate']}', {hotel['estimatedCost']}, '{hotel['requestId']}')"
+                for hotel in hotels
+            ])
+            query = f"INSERT INTO hotel (city_name, check_in, check_out, estimated_cost, request_id) VALUES {values}"
+
+            # Execute the query
+            cursor.execute(query)
+            connection.commit()
+
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Hotels Saved Successfully",
+            })
+        except Exception as err:
+            return jsonify({
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "Something Went Wrong",
+                "reason": str(err)
+            })
 
 
 # # 5. Request PerDiem on Travel

@@ -13,7 +13,8 @@ import pyodbc
 from flask_mail import Mail, Message
 from flask import Flask, request, jsonify, session, Response
 from flask_cors import CORS
-from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, expense_carrental_data, clear_expense_perdiem_data, clear_expense_hotel_data, clear_expense_transport_data
+from ExpenseTransportAPI import expense_flight_data, expense_bus_data, expense_train_data, expense_taxi_data, \
+    expense_carrental_data, clear_expense_perdiem_data, clear_expense_hotel_data, clear_expense_transport_data
 from Pull_Request_Data import pull_request_data_api
 from constants import http_status_codes, custom_status_codes
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required, get_jwt_identity
@@ -1696,7 +1697,7 @@ def preview_file():
                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
             }
 
-        url = "https://proclozstorage.blob.core.windows.net/internaldata/"+file_name
+        url = "https://proclozstorage.blob.core.windows.net/internaldata/" + file_name
         return {
             "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "File Preview Successfully",
@@ -2185,23 +2186,28 @@ def expense_transport():
                 }
 
             if transport_type == "flight":
-                result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                result = expense_flight_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                             container_client, employee_id)
                 return result
 
             if transport_type == "train":
-                result = expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                result = expense_train_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                            container_client, employee_id)
                 return result
 
             if transport_type == "bus":
-                result = expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                result = expense_bus_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                          container_client, employee_id)
                 return result
 
             if transport_type == "taxi":
-                result = expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, objects, container_client, employee_id)
+                result = expense_taxi_data(cursor, connection, request_id, transport_type, trip_way, objects,
+                                           container_client, employee_id)
                 return result
 
             if transport_type == "carRental":
-                result = expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request, container_client, employee_id)
+                result = expense_carrental_data(cursor, connection, request_id, transport_type, trip_way, request,
+                                                container_client, employee_id)
                 return result
 
             return {
@@ -2325,7 +2331,9 @@ def expense_hotel():
 
                 # Execute the query
                 query = "INSERT INTO expensehotel (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exchange_rate, final_amount, bill_file, bill_file_original_name, request_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-                cursor.execute(query, (city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount, expense_type, establishment_name, exc_rate, final_amount, file_name, original_file_name, request_id))
+                cursor.execute(query, (
+                city_name, start_date, end_date, estimated_cost, bill_date, bill_number, bill_currency, bill_amount,
+                expense_type, establishment_name, exc_rate, final_amount, file_name, original_file_name, request_id))
                 connection.commit()
 
             return jsonify({
@@ -4087,68 +4095,69 @@ def pull_request_list():
 
 # ------------------------------- Expense Dashboard API -------------------------------
 # Total Request of Specific Employee:
-# @app.route('/expense-request-list', methods=['GET'])
-# def expense_request_lists():
-#     print("Came Here Now to test !!")
-#     try:
-#         employeeId = request.headers.get('employeeId')
-#
-#         # Condition of Required Data in Request
-#         if employeeId is None:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
-#             }
-#
-#         data_list = expense_request_list(cursor, employeeId)
-#         print("Data List: ", data_list)
-#         open_req = []
-#         total_req = []
-#         to_be_approve = []
-#         pending_req = []
-#         for req in data_list:
-#             print("Request: ", req)
-#             # Code to get the PerDiem and Other Expense Amount:
-#             request_id = req[1]
-#             print("Request_Id: ", request_id)
-#             request_policy = req[4]
-#             print("Request Policy: ", request_policy)
-#             # other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
-#             # print("other Expense: ", other_expense_total)
-#             data_dict = {
-#                 'request_id': request_id,
-#                 'request_name': req[2],
-#                 'start_date': req[3],
-#                 'request_policy': request_policy,
-#                 'employee_name': req[5],
-#                 'status': req[7],
-#                 'total_amount': (req[15])  # + other_expense_total
-#             }
-#             if req[0] == 'Open Request':
-#                 open_req.append(data_dict)
-#             elif req[0] == 'Pending Request':
-#                 pending_req.append(data_dict)
-#             elif req[0] == 'Total Request':
-#                 total_req.append(data_dict)
-#             elif req[0] == 'To Be Approved':
-#                 to_be_approve.append(data_dict)
-#         return {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "data": {
-#                 "totalRequest": total_req,
-#                 "pendingRequest": pending_req,
-#                 "openRequest": open_req,
-#                 "toBeApproved": to_be_approve
-#             },
-#             "responseMessage": "Data Fetched Successfully"
-#         }
-#
-#     except Exception as err:
-#         return {
-#             "reason": str(err),
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong."
-#         }
+@app.route('/expense-request-list', methods=['GET'])
+def expense_request_lists():
+    print("Came Here Now to test !!")
+    try:
+        employeeId = request.headers.get('employeeId')
+
+        # Condition of Required Data in Request
+        if employeeId is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> EmployeeId are required Fields!!"
+            }
+
+        data_list = expense_request_list(cursor, employeeId)
+        print("Data List: ", data_list)
+        open_req = []
+        total_req = []
+        to_be_approve = []
+        pending_req = []
+        for req in data_list:
+            print("Request: ", req)
+            # Code to get the PerDiem and Other Expense Amount:
+            request_id = req[1]
+            print("Request_Id: ", request_id)
+            request_policy = req[4]
+            print("Request Policy: ", request_policy)
+            # other_expense_total = total_perdiem_or_expense_amount(cursor, request_id, request_policy)
+            # print("other Expense: ", other_expense_total)
+            data_dict = {
+                'request_id': request_id,
+                'request_name': req[2],
+                'start_date': req[3],
+                'request_policy': request_policy,
+                'employee_name': req[5],
+                'status': req[7],
+                'total_amount': (req[15])  # + other_expense_total
+            }
+            if req[0] == 'Open Request':
+                open_req.append(data_dict)
+            elif req[0] == 'Pending Request':
+                pending_req.append(data_dict)
+            elif req[0] == 'Total Request':
+                total_req.append(data_dict)
+            elif req[0] == 'To Be Approved':
+                to_be_approve.append(data_dict)
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": {
+                "totalRequest": total_req,
+                "pendingRequest": pending_req,
+                "openRequest": open_req,
+                "toBeApproved": to_be_approve
+            },
+            "responseMessage": "Data Fetched Successfully"
+        }
+
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong."
+        }
+
 
 # ------------------------------- Data Fetch API -------------------------------
 
@@ -4519,43 +4528,43 @@ def exchange_rate():
         to_currency = request.headers.get('baseCurrency')
 
         query = f"select {to_currency} from country where currency_code=?"
-        currency_value = cursor.execute(query, (base_currency, )).fetchone()
+        currency_value = cursor.execute(query, (base_currency,)).fetchone()
         return {
             "exchangeRate": currency_value[0],
             "responseCode": http_status_codes.HTTP_200_OK,
             "responseMessage": "Exchange Rate Fetched Successfully"
         }
     except Exception as err:
-        return{
+        return {
             "reason": str(err),
             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
             "responseMessage": "Something Went Wrong"
         }
 
 
-@app.route('/file-ocr', methods=['POST'])
-# @jwt_required()
-def file_ocr_data():
-    try:
-        file = request.files.get('file')
-        file_data = get_ocr_data(file)
-        return {
-            "fileData": file_data,
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Success"
-        }
-    except Exception as err:
-        return {
-            "reason": str(err),
-            "fileData": {
-                "billNumber": "",
-                "billAmount": "",
-                "billDate": "",
-                "establishmentName": ""
-            },
-            "responseCode": http_status_codes.HTTP_200_OK,
-            "responseMessage": "Something Went Wrong !!"
-        }
+# @app.route('/file-ocr', methods=['POST'])
+# # @jwt_required()
+# def file_ocr_data():
+#     try:
+#         file = request.files.get('file')
+#         file_data = get_ocr_data(file)
+#         return {
+#             "fileData": file_data,
+#             "responseCode": http_status_codes.HTTP_200_OK,
+#             "responseMessage": "Success"
+#         }
+#     except Exception as err:
+#         return {
+#             "reason": str(err),
+#             "fileData": {
+#                 "billNumber": "",
+#                 "billAmount": "",
+#                 "billDate": "",
+#                 "establishmentName": ""
+#             },
+#             "responseCode": http_status_codes.HTTP_200_OK,
+#             "responseMessage": "Something Went Wrong !!"
+#         }
 
 
 @app.route('/sample-api-test', methods=['GET', 'POST'])

@@ -1699,30 +1699,30 @@ def upload_file(file):
         }
 
 
-# # API for Preview File:
-# @app.route('/preview-file', methods=['GET'])
-# # @jwt_required()
-# def preview_file():
-#     try:
-#         file_name = request.headers.get('fileName')
-#         if not file_name:
-#             return {
-#                 "responseMessage": "fileName is Missing",
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
-#             }
-#
-#         url = "https://proclozstorage.blob.core.windows.net/internaldata/" + file_name
-#         return {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "responseMessage": "File Preview Successfully",
-#             "fileUrl": url
-#         }
-#     except Exception as err:
-#         return {
-#             'error': str(err),
-#             'responseMessage': 'File not found',
-#             'responseCode': http_status_codes.HTTP_404_NOT_FOUND
-#         }
+# API for Preview File:
+@app.route('/preview-file', methods=['GET'])
+# @jwt_required()
+def preview_file():
+    try:
+        file_name = request.headers.get('fileName')
+        if not file_name:
+            return {
+                "responseMessage": "fileName is Missing",
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST
+            }
+
+        url = "https://proclozstorage.blob.core.windows.net/internaldata/" + file_name
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "File Preview Successfully",
+            "fileUrl": url
+        }
+    except Exception as err:
+        return {
+            'error': str(err),
+            'responseMessage': 'File not found',
+            'responseCode': http_status_codes.HTTP_404_NOT_FOUND
+        }
 
 
 # Function to get the proper Object Format:
@@ -2658,84 +2658,84 @@ def expense_perdiem():
 #                 "responseMessage": "Something Went Wrong",
 #                 "reason": str(err)
 #             })
-#
-#
-# # 8. Clearing Data API
-# @app.route('/clear-expense-data', methods=['POST'])
-# @jwt_required()
-# def expense_clear_data():
-#     try:
-#         data = request.get_json()
-#         request_id = data["requestId"]
-#         request_type = data["requestType"]
-#         if request_type == "transport":
-#             if "transportType" not in data:
-#                 return {
-#                     "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                     "responseMessage": "Transport Type is a Required Field"
-#                 }
-#         if "transportType" in data:
-#             transport_type = data["transportType"]
-#         else:
-#             transport_type = None
-#
-#         # Validation of None Value
-#         if request_type is None:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "(DEBUG) -> requestType not found"
-#             }
-#
-#         # Checking the Condition for the Request Type
-#         if request_type.lower() == "hotel":
-#             result = clear_hotel_data(cursor, connection, request_id, "expense")
-#             return result
-#         elif request_type.lower() == "perdiem":
-#             result = clear_perdiem_data(cursor, connection, request_id, "expense")
-#             return result
-#         elif request_type.lower() == "transport":
-#             result = clear_transport_data(cursor, connection, request_id, transport_type, "expense")
-#             return result
-#         else:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
-#                 "responseMessage": "(DEBUG) -> Invalid request_type Found"
-#             }
-#     except Exception as err:
-#         return {
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong",
-#             "reason": str(err)
-#         }
-#
-#
-# # 9. Canceling Request Data API
-# @app.route('/cancel-expense-request', methods=['POST'])
-# @jwt_required()
-# def expense_cancel_request():
-#     try:
-#         data = request.get_json()
-#         request_id = data["requestId"]
-#
-#         query = f"""
-#             Delete from expenserequest where expenserequest.request_id=?
-#         """
-#
-#         cursor.execute(query, (request_id,))
-#         connection.commit()
-#
-#         return {
-#             "responseMessage": "Expense Request Cancelled Successfully",
-#             "responseCode": http_status_codes.HTTP_200_OK
-#         }
-#     except Exception as err:
-#         return {
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong",
-#             "reason": str(err)
-#         }
-#
-#
+
+
+# 8. Clearing Data API
+@app.route('/clear-expense-data', methods=['POST'])
+@jwt_required()
+def expense_clear_data():
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+        request_type = data["requestType"]
+        if request_type == "transport":
+            if "transportType" not in data:
+                return {
+                    "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                    "responseMessage": "Transport Type is a Required Field"
+                }
+        if "transportType" in data:
+            transport_type = data["transportType"]
+        else:
+            transport_type = None
+
+        # Validation of None Value
+        if request_type is None:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> requestType not found"
+            }
+
+        # Checking the Condition for the Request Type
+        if request_type.lower() == "hotel":
+            result = clear_hotel_data(cursor, connection, request_id, "expense")
+            return result
+        elif request_type.lower() == "perdiem":
+            result = clear_perdiem_data(cursor, connection, request_id, "expense")
+            return result
+        elif request_type.lower() == "transport":
+            result = clear_transport_data(cursor, connection, request_id, transport_type, "expense")
+            return result
+        else:
+            return {
+                "responseCode": http_status_codes.HTTP_400_BAD_REQUEST,
+                "responseMessage": "(DEBUG) -> Invalid request_type Found"
+            }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
+
+
+# 9. Canceling Request Data API
+@app.route('/cancel-expense-request', methods=['POST'])
+@jwt_required()
+def expense_cancel_request():
+    try:
+        data = request.get_json()
+        request_id = data["requestId"]
+
+        query = f"""
+            Delete from expenserequest where expenserequest.request_id=?
+        """
+
+        cursor.execute(query, (request_id,))
+        connection.commit()
+
+        return {
+            "responseMessage": "Expense Request Cancelled Successfully",
+            "responseCode": http_status_codes.HTTP_200_OK
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        }
+
+
 # # 10. Request Detail Page API
 # @app.route('/expense-request-detail', methods=['GET'])
 # @jwt_required()

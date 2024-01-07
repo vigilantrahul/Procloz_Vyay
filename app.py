@@ -4565,12 +4565,13 @@ def file_ocr_data():
             "responseMessage": "Success"
         }
     except Exception as err:
+        bill_date = None
         return {
             "reason": str(err),
             "fileData": {
                 "billNumber": "",
                 "billAmount": "",
-                "billDate": "",  # null
+                "billDate": bill_date,  # null
                 "establishmentName": ""
             },
             "responseCode": http_status_codes.HTTP_200_OK,

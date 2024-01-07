@@ -26,7 +26,7 @@ from request_list import request_list, pull_request
 from TotalAmountRequest import total_amount_request, total_perdiem_or_expense_amount
 from TransportApi import flight_data, train_data, bus_data, taxi_data, carrental_data, clear_hotel_data, \
     clear_perdiem_data, clear_transport_data
-# from OCR_Code import get_ocr_data
+from OCR_Code import get_ocr_data
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "https://vyay-test.azurewebsites.net"], supports_credentials=True)
@@ -4553,29 +4553,29 @@ def exchange_rate():
         }
 
 
-# @app.route('/file-ocr', methods=['POST'])
-# # @jwt_required()
-# def file_ocr_data():
-#     try:
-#         file = request.files.get('file')
-#         file_data = get_ocr_data(file)
-#         return {
-#             "fileData": file_data,
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "responseMessage": "Success"
-#         }
-#     except Exception as err:
-#         return {
-#             "reason": str(err),
-#             "fileData": {
-#                 "billNumber": "",
-#                 "billAmount": "",
-#                 "billDate": "",
-#                 "establishmentName": ""
-#             },
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "responseMessage": "Something Went Wrong !!"
-#         }
+@app.route('/file-ocr', methods=['POST'])
+# @jwt_required()
+def file_ocr_data():
+    try:
+        file = request.files.get('file')
+        file_data = get_ocr_data(file)
+        return {
+            "fileData": file_data,
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Success"
+        }
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "fileData": {
+                "billNumber": "",
+                "billAmount": "",
+                "billDate": None,  # null
+                "establishmentName": ""
+            },
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Something Went Wrong !!"
+        }
 
 
 # @app.route('/sample-api-test', methods=['GET', 'POST'])

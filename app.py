@@ -4214,342 +4214,344 @@ def get_org():
         })
 
 
-# # Get Request_policy Data:
-# @app.route('/get-request-policy', methods=['GET'])
+# Get Request_policy Data:
+@app.route('/get-request-policy', methods=['GET'])
+@jwt_required()
+def get_request_policy():
+    try:
+        organization = request.headers.get('organization')
+        if organization is None:
+            return {
+                "responseMessage": "(DEBUG) -> Organization is Required Field",
+                "responseCode": 400
+            }
+
+        qry = f"SELECT * FROM requestpolicy where organization=?"
+        request_policy_data = cursor.execute(qry, organization).fetchall()
+        # task_list = [{"label": policy.request_policy_name,
+        #               "perDiem": bool(policy.perdiem),
+        #               "cashAdvance": bool(policy.cashadvance),
+        #               "internationRoaming": bool(policy.international_roaming),
+        #               "incidentCharges": bool(policy.incident_charges)
+        #               } for policy in request_policy_data]
+
+        task_list = [{
+            "label": policy.request_policy_name,
+            "perDiem": bool(policy.perdiem),
+            "cashAdvance": bool(policy.cashadvance),
+            "internationRoaming": bool(policy.international_roaming),
+            "incidentCharges": bool(policy.incident_charges),
+            "otherExpense": False if not policy.international_roaming and not policy.incident_charges else True
+        } for policy in request_policy_data]
+
+        return jsonify({"responseCode": 200,
+                        "data": task_list,
+                        "responseMessage": "Request Policy Successfully Fetched!!!"})
+
+    except Exception as err:
+        return jsonify({
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong",
+            "reason": str(err)
+        })
+
+
+# Get General/Profile Data:
+@app.route('/get-profile', methods=['GET'])
+def get_profile():
+    organization = request.headers.get('organization')
+    employee = request.headers.get('employeeId')
+
+    if organization is None or employee is None:
+        return {
+            "responseCode": 400,
+            "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
+        }
+
+    # Validating the organizationId and employeeId
+    try:
+        qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
+        user_data = cursor.execute(qry_1, employee).fetchall()
+
+    except Exception as err_1:
+        return {
+            "error": str(err_1),
+            "responseCode": 500,
+            "responseMessage": "Error is Occurring"
+        }
+
+    task_list = [{'employee_id': user.employee_id,
+                  'employee_first_name': user.employee_first_name,
+                  'employee_middle_name': user.employee_middle_name,
+                  'employee_last_name': user.employee_last_name,
+                  'employee_business_title': user.employee_business_title,
+                  'cost_center': user.costcenter,
+                  'employee_country_name': user.employee_country_name,
+                  'employee_currency_code': user.employee_currency_code,
+                  'employee_currency_name': user.employee_currency_name,
+                  'manager_id': user.manager_id,
+                  'l1_manager_id': user.l1_manager_id,
+                  'l2_manager_id': user.l2_manager_id,
+                  'expense_administrator': user.expense_administrator,
+                  'finance_contact_person': user.finance_contact_person,
+                  'company_name': user.organization,
+                  'business_unit': user.business_unit,
+                  'department': user.department,
+                  'function': user.func}
+                 for user in user_data]
+    if len(task_list) == 1:
+        task_list = task_list[0]
+    else:
+        task_list = None
+    return jsonify({
+        "responseCode": 200,
+        "responseMessage": "Success",
+        "data": task_list
+    })
+
+
+@app.route('/need-help', methods=['GET', 'POST'])
 # @jwt_required()
-# def get_request_policy():
-#     try:
-#         organization = request.headers.get('organization')
-#         if organization is None:
-#             return {
-#                 "responseMessage": "(DEBUG) -> Organization is Required Field",
-#                 "responseCode": 400
-#             }
-#
-#         qry = f"SELECT * FROM requestpolicy where organization=?"
-#         request_policy_data = cursor.execute(qry, organization).fetchall()
-#         # task_list = [{"label": policy.request_policy_name,
-#         #               "perDiem": bool(policy.perdiem),
-#         #               "cashAdvance": bool(policy.cashadvance),
-#         #               "internationRoaming": bool(policy.international_roaming),
-#         #               "incidentCharges": bool(policy.incident_charges)
-#         #               } for policy in request_policy_data]
-#
-#         task_list = [{
-#             "label": policy.request_policy_name,
-#             "perDiem": bool(policy.perdiem),
-#             "cashAdvance": bool(policy.cashadvance),
-#             "internationRoaming": bool(policy.international_roaming),
-#             "incidentCharges": bool(policy.incident_charges),
-#             "otherExpense": False if not policy.international_roaming and not policy.incident_charges else True
-#         } for policy in request_policy_data]
-#
-#         return jsonify({"responseCode": 200,
-#                         "data": task_list,
-#                         "responseMessage": "Request Policy Successfully Fetched!!!"})
-#
-#     except Exception as err:
-#         return jsonify({
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong",
-#             "reason": str(err)
-#         })
-#
-#
-# # Get General/Profile Data:
-# @app.route('/get-profile', methods=['GET'])
-# def get_profile():
-#     organization = request.headers.get('organization')
-#     employee = request.headers.get('employeeId')
-#
-#     if organization is None or employee is None:
-#         return {
-#             "responseCode": 400,
-#             "responseMessage": "(DEBUG) -> employeeId and Organization are required field"
-#         }
-#
-#     # Validating the organizationId and employeeId
-#     try:
-#         qry_1 = "SELECT u.employee_id, u.employee_first_name, u.employee_middle_name, u.employee_last_name, u.employee_business_title, u.costcenter, u.employee_country_name, u.employee_currency_code, u.employee_currency_name, u.manager_id, u.l1_manager_id, u.l2_manager_id, org.expense_administrator, org.finance_contact_person, org.company_name AS organization, bu.business_unit_name AS business_unit, d.department AS department, f.function_name AS func FROM userproc05092023_1 u LEFT JOIN organization org ON u.organization = org.company_id LEFT JOIN businessunit bu ON u.business_unit = bu.business_unit_id LEFT JOIN departments d ON bu.business_unit_id = d.business_unit LEFT JOIN functions f ON d.department = f.department WHERE u.employee_id = ?;"
-#         user_data = cursor.execute(qry_1, employee).fetchall()
-#
-#     except Exception as err_1:
-#         return {
-#             "error": str(err_1),
-#             "responseCode": 500,
-#             "responseMessage": "Error is Occurring"
-#         }
-#
-#     task_list = [{'employee_id': user.employee_id,
-#                   'employee_first_name': user.employee_first_name,
-#                   'employee_middle_name': user.employee_middle_name,
-#                   'employee_last_name': user.employee_last_name,
-#                   'employee_business_title': user.employee_business_title,
-#                   'cost_center': user.costcenter,
-#                   'employee_country_name': user.employee_country_name,
-#                   'employee_currency_code': user.employee_currency_code,
-#                   'employee_currency_name': user.employee_currency_name,
-#                   'manager_id': user.manager_id,
-#                   'l1_manager_id': user.l1_manager_id,
-#                   'l2_manager_id': user.l2_manager_id,
-#                   'expense_administrator': user.expense_administrator,
-#                   'finance_contact_person': user.finance_contact_person,
-#                   'company_name': user.organization,
-#                   'business_unit': user.business_unit,
-#                   'department': user.department,
-#                   'function': user.func}
-#                  for user in user_data]
-#     if len(task_list) == 1:
-#         task_list = task_list[0]
-#     else:
-#         task_list = None
-#     return jsonify({
-#         "responseCode": 200,
-#         "responseMessage": "Success",
-#         "data": task_list
-#     })
+def need_help():
+    if request.method == 'GET':
+        try:
+            query = "select * from needhelp"
+            need_help_data = cursor.execute(query).fetchall()
+            task_list = [{'Question': ques.question, 'Answer': ques.answer} for ques in need_help_data]
+            return {
+                "data": task_list,
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Questions Fetched Successfully"
+            }
+        except Exception as err:
+            return {
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong !!!",
+                "reason": str(err)
+            }
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            request_message = data.get('requestMessage')
+
+            sender_email = "noreply@vyay.tech"
+            employee_email = data.get('employeeEmail')
+            it_desk_email = "mavrider007@gmail.com"
+
+            # Email to IT Support:
+            msg = Message('Tickets Raised ', sender=sender_email, recipients=[it_desk_email])
+            msg.body = request_message
+            mail.send(msg)
+
+            # Email to Employee:
+            msg = Message('Request Sent', sender=sender_email, recipients=[employee_email])
+            msg.body = f"""
+                Hi,
+
+                Thank you for submitting your request.
+
+                Your Request has been Submitted, Support Team will get back to you soon.
+                Thanks,
+                Vyay Team
+            """
+            mail.send(msg)
+
+            return {
+                "responseCode": http_status_codes.HTTP_200_OK,
+                "responseMessage": "Request Submitted Successfully"
+            }
+        except Exception as err:
+            return {
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong !!!",
+                "reason": str(err)
+            }
 
 
-# @app.route('/need-help', methods=['GET', 'POST'])
-# # @jwt_required()
-# def need_help():
-#     if request.method == 'GET':
-#         try:
-#             query = "select * from needhelp"
-#             need_help_data = cursor.execute(query).fetchall()
-#             task_list = [{'Question': ques.question, 'Answer': ques.answer} for ques in need_help_data]
-#             return {
-#                 "data": task_list,
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Questions Fetched Successfully"
-#             }
-#         except Exception as err:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "responseMessage": "Something Went Wrong !!!",
-#                 "reason": str(err)
-#             }
-#     elif request.method == 'POST':
-#         try:
-#             data = request.get_json()
-#             request_message = data.get('requestMessage')
-#
-#             sender_email = "noreply@vyay.tech"
-#             employee_email = data.get('employeeEmail')
-#             it_desk_email = "mavrider007@gmail.com"
-#
-#             # Email to IT Support:
-#             msg = Message('Tickets Raised ', sender=sender_email, recipients=[it_desk_email])
-#             msg.body = request_message
-#             mail.send(msg)
-#
-#             # Email to Employee:
-#             msg = Message('Request Sent', sender=sender_email, recipients=[employee_email])
-#             msg.body = f"""
-#                 Hi,
-#
-#                 Thank you for submitting your request.
-#
-#                 Your Request has been Submitted, Support Team will get back to you soon.
-#                 Thanks,
-#                 Vyay Team
-#             """
-#             mail.send(msg)
-#
-#             return {
-#                 "responseCode": http_status_codes.HTTP_200_OK,
-#                 "responseMessage": "Request Submitted Successfully"
-#             }
-#         except Exception as err:
-#             return {
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "responseMessage": "Something Went Wrong !!!",
-#                 "reason": str(err)
-#             }
-#
-#
-# @app.route('/get-bulletin', methods=['GET'])
+# Get Bulletin API
+@app.route('/get-bulletin', methods=['GET'])
+@jwt_required()
+def get_notes():
+    try:
+        organization_id = request.headers.get('organization')
+        query = "select bulletin_note from organization Where company_id=?"
+        bulletin_data = cursor.execute(query, (organization_id,)).fetchone()
+
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": {
+                "bulletinNote": bulletin_data[0]
+            },
+            "responseMessage": "Bulletin Note Fetched Successfully."
+        }
+    except Exception as err:
+        return {
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong !!!",
+            "reason": str(err)
+        }
+
+
+# Notification API
+@app.route('/notification', methods=['GET', 'POST'])
+@jwt_required()
+def notification():
+    if request.method == 'GET':
+        try:
+            employee_id = request.headers.get('employeeId')
+
+            query = "SELECT * from notification WHERE employee_id=?"
+            cursor.execute(query, (employee_id,))
+            notification_data = cursor.fetchall()
+            notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
+                                  "created_date": notify.created_at, "current_status": notify.current_status,
+                                  "message": notify.message} for notify in notification_data]
+
+            notification_query = "SELECT COUNT(*) as Notification_Count FROM notification WHERE employee_id = ? AND current_status = 1;"
+            result = cursor.execute(notification_query, (employee_id,)).fetchone()
+            notification_count = result[0] if result else 0
+            return {
+                'responseCode': http_status_codes.HTTP_200_OK,
+                'responseMessage': 'Notification fetched Successfully',
+                'data': notification_list,
+                'count': notification_count
+            }
+        except Exception as err:
+            return {
+                'reason': str(err),
+                'responseCode': http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                'responseMessage': 'Something Went Wrong'
+            }
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            notification_id = data.get('notificationId')
+            if "currentStatus" in data:
+                current_status = data.get('currentStatus')
+            else:
+                current_status = None
+
+            if isinstance(notification_id, list):
+                notification_id = tuple(notification_id)
+
+                # Convert the list to a tuple
+                if len(notification_id) == 1:
+                    notification_id = str(notification_id).replace(',', "")
+                else:
+                    notification_id = notification_id
+                query = f"DELETE FROM notification WHERE id IN {notification_id}"
+                cursor.execute(query)
+                connection.commit()
+                return {
+                    'responseCode': http_status_codes.HTTP_200_OK,
+                    'responseMessage': 'Notifications Deleted Successfully'
+                }
+            else:
+                query = "Update notification SET current_status=? where id=?"
+                cursor.execute(query, (current_status, notification_id))
+                connection.commit()
+
+                return {
+                    'responseCode': http_status_codes.HTTP_200_OK,
+                    'responseMessage': 'Status Update Successfully'
+                }
+        except Exception as err:
+            return {
+                "reason": str(err),
+                "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+                "responseMessage": "Something Went Wrong"
+            }
+
+
+# Replace this with your desired upload folder
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure the UPLOAD_FOLDER exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Set the allowed file extensions
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def list_folder_structure(folder_path):
+    try:
+        items = os.listdir(folder_path)
+
+        # Create a list to store the folder structure
+        folder_structure = []
+
+        for item in items:
+            item_path = os.path.join(folder_path, item)
+            if os.path.isdir(item_path):
+                # Recursive call for subdirectories
+                subfolder_structure = list_folder_structure(item_path)
+                folder_structure.append({'Folder': item, 'Contents': subfolder_structure})
+            else:
+                folder_structure.append({'File': item})
+
+        return folder_structure
+    except FileNotFoundError:
+        return None
+
+
+def get_folder_path(folder_name):
+    current_directory = os.getcwd()
+    folder_path = os.path.join(current_directory, folder_name)
+
+    if os.path.exists(folder_path) and os.path.isdir(folder_path):
+        return folder_path
+    else:
+        return None
+
+
+@app.route('/get-currency', methods=['GET'])
 # @jwt_required()
-# def get_notes():
-#     try:
-#         organization_id = request.headers.get('organization')
-#         query = "select bulletin_note from organization Where company_id=?"
-#         bulletin_data = cursor.execute(query, (organization_id,)).fetchone()
-#
-#         return {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "data": {
-#                 "bulletinNote": bulletin_data[0]
-#             },
-#             "responseMessage": "Bulletin Note Fetched Successfully."
-#         }
-#     except Exception as err:
-#         return {
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong !!!",
-#             "reason": str(err)
-#         }
-#
-#
-# @app.route('/notification', methods=['GET', 'POST'])
+def get_currency():
+    try:
+        query = "Select currency_code from country"
+        currency_data = cursor.execute(query).fetchall()
+        currency = []
+        for data in currency_data:
+            currency.append(data[0])
+        return {
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "data": currency,
+            "responseMessage": "Currency Fetched Successfully"
+        }
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong !!"
+        }
+
+
+@app.route('/exchange-rate', methods=['GET'])
 # @jwt_required()
-# def notification():
-#     if request.method == 'GET':
-#         try:
-#             employee_id = request.headers.get('employeeId')
-#
-#             query = "SELECT * from notification WHERE employee_id=?"
-#             cursor.execute(query, (employee_id,))
-#             notification_data = cursor.fetchall()
-#             notification_list = [{'id': notify.id, 'request_id': notify.request_id, "employee_id": notify.employee_id,
-#                                   "created_date": notify.created_at, "current_status": notify.current_status,
-#                                   "message": notify.message} for notify in notification_data]
-#
-#             notification_query = "SELECT COUNT(*) as Notification_Count FROM notification WHERE employee_id = ? AND current_status = 1;"
-#             result = cursor.execute(notification_query, (employee_id,)).fetchone()
-#             notification_count = result[0] if result else 0
-#             return {
-#                 'responseCode': http_status_codes.HTTP_200_OK,
-#                 'responseMessage': 'Notification fetched Successfully',
-#                 'data': notification_list,
-#                 'count': notification_count
-#             }
-#         except Exception as err:
-#             return {
-#                 'reason': str(err),
-#                 'responseCode': http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 'responseMessage': 'Something Went Wrong'
-#             }
-#     if request.method == 'POST':
-#         try:
-#             data = request.get_json()
-#             notification_id = data.get('notificationId')
-#             if "currentStatus" in data:
-#                 current_status = data.get('currentStatus')
-#             else:
-#                 current_status = None
-#
-#             if isinstance(notification_id, list):
-#                 notification_id = tuple(notification_id)
-#
-#                 # Convert the list to a tuple
-#                 if len(notification_id) == 1:
-#                     notification_id = str(notification_id).replace(',', "")
-#                 else:
-#                     notification_id = notification_id
-#                 query = f"DELETE FROM notification WHERE id IN {notification_id}"
-#                 cursor.execute(query)
-#                 connection.commit()
-#                 return {
-#                     'responseCode': http_status_codes.HTTP_200_OK,
-#                     'responseMessage': 'Notifications Deleted Successfully'
-#                 }
-#             else:
-#                 query = "Update notification SET current_status=? where id=?"
-#                 cursor.execute(query, (current_status, notification_id))
-#                 connection.commit()
-#
-#                 return {
-#                     'responseCode': http_status_codes.HTTP_200_OK,
-#                     'responseMessage': 'Status Update Successfully'
-#                 }
-#         except Exception as err:
-#             return {
-#                 "reason": str(err),
-#                 "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 "responseMessage": "Something Went Wrong"
-#             }
+def exchange_rate():
+    try:
+        base_currency = request.headers.get('billCurrency')
+        to_currency = request.headers.get('baseCurrency')
 
+        query = f"select {to_currency} from country where currency_code=?"
+        currency_value = cursor.execute(query, (base_currency,)).fetchone()
+        return {
+            "exchangeRate": currency_value[0],
+            "responseCode": http_status_codes.HTTP_200_OK,
+            "responseMessage": "Exchange Rate Fetched Successfully"
+        }
+    except Exception as err:
+        return {
+            "reason": str(err),
+            "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
+            "responseMessage": "Something Went Wrong"
+        }
 
-# # Replace this with your desired upload folder
-# UPLOAD_FOLDER = 'uploads'
-# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-#
-# # Ensure the UPLOAD_FOLDER exists
-# os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-#
-# # Set the allowed file extensions
-# ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif'}
-#
-#
-# def allowed_file(filename):
-#     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-#
-#
-# def list_folder_structure(folder_path):
-#     try:
-#         items = os.listdir(folder_path)
-#
-#         # Create a list to store the folder structure
-#         folder_structure = []
-#
-#         for item in items:
-#             item_path = os.path.join(folder_path, item)
-#             if os.path.isdir(item_path):
-#                 # Recursive call for subdirectories
-#                 subfolder_structure = list_folder_structure(item_path)
-#                 folder_structure.append({'Folder': item, 'Contents': subfolder_structure})
-#             else:
-#                 folder_structure.append({'File': item})
-#
-#         return folder_structure
-#     except FileNotFoundError:
-#         return None
-#
-#
-# def get_folder_path(folder_name):
-#     current_directory = os.getcwd()
-#     folder_path = os.path.join(current_directory, folder_name)
-#
-#     if os.path.exists(folder_path) and os.path.isdir(folder_path):
-#         return folder_path
-#     else:
-#         return None
-
-
-# @app.route('/get-currency', methods=['GET'])
-# # @jwt_required()
-# def get_currency():
-#     try:
-#         query = "Select currency_code from country"
-#         currency_data = cursor.execute(query).fetchall()
-#         currency = []
-#         for data in currency_data:
-#             currency.append(data[0])
-#         return {
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "data": currency,
-#             "responseMessage": "Currency Fetched Successfully"
-#         }
-#     except Exception as err:
-#         return {
-#             "reason": str(err),
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong !!"
-#         }
-
-
-# @app.route('/exchange-rate', methods=['GET'])
-# # @jwt_required()
-# def exchange_rate():
-#     try:
-#         base_currency = request.headers.get('billCurrency')
-#         to_currency = request.headers.get('baseCurrency')
-#
-#         query = f"select {to_currency} from country where currency_code=?"
-#         currency_value = cursor.execute(query, (base_currency,)).fetchone()
-#         return {
-#             "exchangeRate": currency_value[0],
-#             "responseCode": http_status_codes.HTTP_200_OK,
-#             "responseMessage": "Exchange Rate Fetched Successfully"
-#         }
-#     except Exception as err:
-#         return {
-#             "reason": str(err),
-#             "responseCode": http_status_codes.HTTP_500_INTERNAL_SERVER_ERROR,
-#             "responseMessage": "Something Went Wrong"
-#         }
-#
 
 # @app.route('/file-ocr', methods=['POST'])
 # # @jwt_required()
